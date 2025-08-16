@@ -49,7 +49,7 @@ export function middleware(request: NextRequest) {
     }
 
     return response;
-  } catch (error) {
+  } catch {
     if (apiRoutes) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }

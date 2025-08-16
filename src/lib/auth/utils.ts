@@ -2,6 +2,15 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { randomBytes } from 'crypto';
 
+export interface TokenPayload {
+  userId: string;
+  email: string;
+  role: string;
+  companyId?: string | null; 
+  firstName: string;
+  lastName: string;
+}
+
 export function generateLoginCode(): string {
   return randomBytes(4).toString('hex').toUpperCase();
 }
@@ -21,10 +30,10 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function generateToken(payload: any): string {
+export function generateToken(payload: TokenPayload): string {
   return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '24h' });
 }
 
-export function verifyToken(token: string): any {
-  return jwt.verify(token, process.env.JWT_SECRET!);
+export function verifyToken(token: string): TokenPayload {
+  return jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
 }

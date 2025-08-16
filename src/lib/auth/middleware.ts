@@ -25,12 +25,12 @@ export function requireAuth(handler: (req: AuthenticatedRequest) => Promise<Next
       (req as AuthenticatedRequest).user = {
         id: decoded.userId,
         role: decoded.role,
-        companyId: decoded.companyId,
+        companyId: decoded.companyId || undefined, 
         email: decoded.email,
       };
 
       return handler(req as AuthenticatedRequest);
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
   };
