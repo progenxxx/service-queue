@@ -1,4 +1,5 @@
 import { pgTable, text, timestamp, integer, boolean, pgEnum } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 import { createId } from '@paralleldrive/cuid2';
 
 export const userRoleEnum = pgEnum('user_role', ['customer', 'customer_admin', 'agent', 'super_admin']);
@@ -80,3 +81,83 @@ export const requestAttachments = pgTable('request_attachments', {
   uploadedById: text('uploaded_by_id').references(() => users.id).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const companiesRelations = relations(companies, ({ many }) => ({
+  users: many(users),
+  serviceRequests: many(serviceRequests),
+}));
+
+export const usersRelations = relations(users, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [users.companyId],
+    references: [companies.id],
+  }),
+  agent: one(agents, {
+    fields: [users.id],
+    references: [agents.userId],
+  }),
+  assignedRequests: many(serviceRequests, {
+    relationName: 'assignedToRequests',
+  }),
+  createdRequests: many(serviceRequests, {
+    relationName: 'assignedByRequests',
+  }),
+  modifiedRequests: many(serviceRequests, {
+    relationName: 'modifiedByRequests',
+  }),
+  notes: many(requestNotes),
+  attachments: many(requestAttachments),
+}));
+
+export const agentsRelations = relations(agents, ({ one }) => ({
+  user: one(users, {
+    fields: [agents.userId],
+    references: [users.id],
+  }),
+}));
+
+export const serviceRequestsRelations = relations(serviceRequests, ({ one, many }) => ({
+  company: one(companies, {
+    fields: [serviceRequests.companyId],
+    references: [companies.id],
+  }),
+  assignedTo: one(users, {
+    fields: [serviceRequests.assignedToId],
+    references: [users.id],
+    relationName: 'assignedToRequests',
+  }),
+  assignedBy: one(users, {
+    fields: [serviceRequests.assignedById],
+    references: [users.id],
+    relationName: 'assignedByRequests',
+  }),
+  modifiedBy: one(users, {
+    fields: [serviceRequests.modifiedById],
+    references: [users.id],
+    relationName: 'modifiedByRequests',
+  }),
+  notes: many(requestNotes),
+  attachments: many(requestAttachments),
+}));
+
+export const requestNotesRelations = relations(requestNotes, ({ one }) => ({
+  request: one(serviceRequests, {
+    fields: [requestNotes.requestId],
+    references: [serviceRequests.id],
+  }),
+  author: one(users, {
+    fields: [requestNotes.authorId],
+    references: [users.id],
+  }),
+}));
+
+export const requestAttachmentsRelations = relations(requestAttachments, ({ one }) => ({
+  request: one(serviceRequests, {
+    fields: [requestAttachments.requestId],
+    references: [serviceRequests.id],
+  }),
+  uploadedBy: one(users, {
+    fields: [requestAttachments.uploadedById],
+    references: [users.id],
+  }),
+}));
