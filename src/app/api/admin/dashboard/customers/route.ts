@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { companies, serviceRequests, users } from '@/lib/db/schema';
-import { sql, eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 export const GET = requireRole(['super_admin'])(
-  async (req: NextRequest) => {
+  async () => {
     try {
       const customers = await db
         .select({
@@ -42,7 +42,7 @@ export const GET = requireRole(['super_admin'])(
         .orderBy(companies.companyName);
 
       return NextResponse.json({ customers });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { serviceRequests, users } from '@/lib/db/schema';
-import { desc, sql } from 'drizzle-orm';
+import { serviceRequests } from '@/lib/db/schema';
+import { desc } from 'drizzle-orm';
 
 export const GET = requireRole(['super_admin'])(
-  async (req: NextRequest) => {
+  async () => {
     try {
       const recentRequests = await db.query.serviceRequests.findMany({
         with: {
@@ -26,7 +26,7 @@ export const GET = requireRole(['super_admin'])(
       }));
 
       return NextResponse.json({ activities });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

@@ -164,7 +164,10 @@ export default function CustomerDashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Recent Requests</CardTitle>
-            <Button href="/customer/requests/create" className="bg-[#087055] hover:bg-[#065946]">
+            <Button 
+              className="bg-[#087055] hover:bg-[#065946]"
+              onClick={() => window.location.href = '/customer/requests/create'}
+            >
               <Plus className="h-4 w-4 mr-2" />
               New Request
             </Button>

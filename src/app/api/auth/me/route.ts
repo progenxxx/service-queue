@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         company: user.company,
       },
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
   }
 }

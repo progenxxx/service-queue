@@ -24,7 +24,7 @@ export const GET = requireRole(['agent'])(
       });
 
       return NextResponse.json({ requests });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

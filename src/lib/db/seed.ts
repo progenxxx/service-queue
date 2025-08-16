@@ -20,13 +20,7 @@ async function seed() {
       phone: '555-0123',
     }).returning();
 
-    const [techlinkCompany] = await db.insert(companies).values({
-      companyName: 'TechLink Solutions',
-      primaryContact: 'Sarah Johnson',
-      email: 'sarah.johnson@techlink.com',
-      phone: '555-0456',
-    }).returning();
-
+    // Super Admin
     const adminPassword = 'Admin123!';
     const hashedAdminPassword = await hashPassword(adminPassword);
 
@@ -40,35 +34,14 @@ async function seed() {
       isActive: true,
     }).returning();
 
-    const agentLoginCode1 = generateLoginCode();
-    const agentLoginCode2 = generateLoginCode();
-    const agentLoginCode3 = generateLoginCode();
+    // Agent
+    const agentLoginCode = generateLoginCode();
 
-    const [agent1] = await db.insert(users).values({
-      firstName: 'Michael',
-      lastName: 'Rodriguez',
-      email: 'michael.rodriguez@axsinsurance.com',
-      loginCode: agentLoginCode1,
-      role: 'agent',
-      companyId: axsCompany.id,
-      isActive: true,
-    }).returning();
-
-    const [agent2] = await db.insert(users).values({
-      firstName: 'Jennifer',
-      lastName: 'Chen',
-      email: 'jennifer.chen@axsinsurance.com',
-      loginCode: agentLoginCode2,
-      role: 'agent',
-      companyId: axsCompany.id,
-      isActive: true,
-    }).returning();
-
-    const [agent3] = await db.insert(users).values({
-      firstName: 'David',
-      lastName: 'Thompson',
-      email: 'david.thompson@axsinsurance.com',
-      loginCode: agentLoginCode3,
+    const [agent] = await db.insert(users).values({
+      firstName: 'Ancheta',
+      lastName: 'BW',
+      email: 'bw.ancheta@ecticketph.com',
+      loginCode: agentLoginCode,
       role: 'agent',
       companyId: axsCompany.id,
       isActive: true,
@@ -76,100 +49,36 @@ async function seed() {
 
     await db.insert(agents).values([
       {
-        userId: agent1.id,
-        assignedCompanyIds: [cicCompany.id, techlinkCompany.id],
-        isActive: true,
-      },
-      {
-        userId: agent2.id,
+        userId: agent.id,
         assignedCompanyIds: [cicCompany.id],
-        isActive: true,
-      },
-      {
-        userId: agent3.id,
-        assignedCompanyIds: [techlinkCompany.id],
         isActive: true,
       },
     ]);
 
+    // Customer Admin
     const cicAdminPassword = 'CICAdmin123!';
     const hashedCICAdminPassword = await hashPassword(cicAdminPassword);
-    const cicUserLoginCode1 = generateLoginCode();
-    const cicUserLoginCode2 = generateLoginCode();
 
-    const [cicAdmin] = await db.insert(users).values({
+    const [customerAdmin] = await db.insert(users).values({
       firstName: 'John',
       lastName: 'Smith',
-      email: 'john.smith@communityinscenter.net',
+      email: 'spawn0731@gmail.com',
       passwordHash: hashedCICAdminPassword,
       role: 'customer_admin',
       companyId: cicCompany.id,
       isActive: true,
     }).returning();
 
-    const [cicUser1] = await db.insert(users).values({
-      firstName: 'Lisa',
-      lastName: 'Williams',
-      email: 'lisa.williams@communityinscenter.net',
-      loginCode: cicUserLoginCode1,
+    // Customer
+    const customerLoginCode = generateLoginCode();
+
+    const [customer] = await db.insert(users).values({
+      firstName: 'Diana Mae',
+      lastName: 'Nillo',
+      email: 'dianamaenillo21@gmail.com',
+      loginCode: customerLoginCode,
       role: 'customer',
       companyId: cicCompany.id,
-      isActive: true,
-    }).returning();
-
-    const [cicUser2] = await db.insert(users).values({
-      firstName: 'Robert',
-      lastName: 'Davis',
-      email: 'robert.davis@communityinscenter.net',
-      loginCode: cicUserLoginCode2,
-      role: 'customer',
-      companyId: cicCompany.id,
-      isActive: true,
-    }).returning();
-
-    const techlinkAdminPassword = 'TechAdmin123!';
-    const hashedTechlinkAdminPassword = await hashPassword(techlinkAdminPassword);
-    const techlinkUserLoginCode1 = generateLoginCode();
-    const techlinkUserLoginCode2 = generateLoginCode();
-    const techlinkUserLoginCode3 = generateLoginCode();
-
-    const [techlinkAdmin] = await db.insert(users).values({
-      firstName: 'Sarah',
-      lastName: 'Johnson',
-      email: 'sarah.johnson@techlink.com',
-      passwordHash: hashedTechlinkAdminPassword,
-      role: 'customer_admin',
-      companyId: techlinkCompany.id,
-      isActive: true,
-    }).returning();
-
-    const [techlinkUser1] = await db.insert(users).values({
-      firstName: 'Mark',
-      lastName: 'Anderson',
-      email: 'mark.anderson@techlink.com',
-      loginCode: techlinkUserLoginCode1,
-      role: 'customer',
-      companyId: techlinkCompany.id,
-      isActive: true,
-    }).returning();
-
-    const [techlinkUser2] = await db.insert(users).values({
-      firstName: 'Emma',
-      lastName: 'Wilson',
-      email: 'emma.wilson@techlink.com',
-      loginCode: techlinkUserLoginCode2,
-      role: 'customer',
-      companyId: techlinkCompany.id,
-      isActive: true,
-    }).returning();
-
-    const [techlinkUser3] = await db.insert(users).values({
-      firstName: 'James',
-      lastName: 'Brown',
-      email: 'james.brown@techlink.com',
-      loginCode: techlinkUserLoginCode3,
-      role: 'customer',
-      companyId: techlinkCompany.id,
       isActive: true,
     }).returning();
 
@@ -182,90 +91,42 @@ async function seed() {
         companyName: axsCompany.companyName,
       });
 
-      await emailService.sendAdminCredentials(cicAdmin.email, {
-        firstName: cicAdmin.firstName,
-        lastName: cicAdmin.lastName,
-        email: cicAdmin.email,
+      await emailService.sendAdminCredentials(customerAdmin.email, {
+        firstName: customerAdmin.firstName,
+        lastName: customerAdmin.lastName,
+        email: customerAdmin.email,
         password: cicAdminPassword,
         companyName: cicCompany.companyName,
       });
 
-      await emailService.sendAdminCredentials(techlinkAdmin.email, {
-        firstName: techlinkAdmin.firstName,
-        lastName: techlinkAdmin.lastName,
-        email: techlinkAdmin.email,
-        password: techlinkAdminPassword,
-        companyName: techlinkCompany.companyName,
-      });
-
-      await emailService.sendAgentWelcome(agent1.email, {
-        firstName: agent1.firstName,
-        lastName: agent1.lastName,
-        loginCode: agentLoginCode1,
+      await emailService.sendAgentWelcome(agent.email, {
+        firstName: agent.firstName,
+        lastName: agent.lastName,
+        loginCode: agentLoginCode,
         companyName: axsCompany.companyName,
       });
 
-      await emailService.sendAgentWelcome(agent2.email, {
-        firstName: agent2.firstName,
-        lastName: agent2.lastName,
-        loginCode: agentLoginCode2,
-        companyName: axsCompany.companyName,
-      });
-
-      await emailService.sendAgentWelcome(agent3.email, {
-        firstName: agent3.firstName,
-        lastName: agent3.lastName,
-        loginCode: agentLoginCode3,
-        companyName: axsCompany.companyName,
-      });
-
-      await emailService.sendCustomerWelcome(cicUser1.email, {
-        firstName: cicUser1.firstName,
-        lastName: cicUser1.lastName,
-        loginCode: cicUserLoginCode1,
+      await emailService.sendCustomerWelcome(customer.email, {
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+        loginCode: customerLoginCode,
         companyName: cicCompany.companyName,
       });
 
-      await emailService.sendCustomerWelcome(cicUser2.email, {
-        firstName: cicUser2.firstName,
-        lastName: cicUser2.lastName,
-        loginCode: cicUserLoginCode2,
-        companyName: cicCompany.companyName,
-      });
-
-      await emailService.sendCustomerWelcome(techlinkUser1.email, {
-        firstName: techlinkUser1.firstName,
-        lastName: techlinkUser1.lastName,
-        loginCode: techlinkUserLoginCode1,
-        companyName: techlinkCompany.companyName,
-      });
-
-      await emailService.sendCustomerWelcome(techlinkUser2.email, {
-        firstName: techlinkUser2.firstName,
-        lastName: techlinkUser2.lastName,
-        loginCode: techlinkUserLoginCode2,
-        companyName: techlinkCompany.companyName,
-      });
-
-      await emailService.sendCustomerWelcome(techlinkUser3.email, {
-        firstName: techlinkUser3.firstName,
-        lastName: techlinkUser3.lastName,
-        loginCode: techlinkUserLoginCode3,
-        companyName: techlinkCompany.companyName,
-      });
-
-    } catch (emailError) {
+    } catch {
+      // Email sending failed, but continue with seeding
     }
 
-  } catch (error) {
-    throw error;
+  } catch {
+    // Seeding failed
+    throw new Error('Seeding failed');
   }
 }
 
 if (require.main === module) {
   seed()
     .then(() => process.exit(0))
-    .catch((error) => {
+    .catch(() => {
       process.exit(1);
     });
 }

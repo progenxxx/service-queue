@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { serviceRequests, agents } from '@/lib/db/schema';
-import { eq, desc, inArray, and } from 'drizzle-orm';
+import { eq, desc, inArray } from 'drizzle-orm';
 
 export const GET = requireRole(['agent'])(
   async (req: NextRequest) => {
@@ -39,7 +39,7 @@ export const GET = requireRole(['agent'])(
       });
 
       return NextResponse.json({ requests });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

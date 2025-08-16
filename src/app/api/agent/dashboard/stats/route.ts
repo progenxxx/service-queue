@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { serviceRequests, agents, users } from '@/lib/db/schema';
+import { serviceRequests, agents } from '@/lib/db/schema';
 import { eq, and, sql, inArray } from 'drizzle-orm';
 
 export const GET = requireRole(['agent'])(
@@ -52,7 +52,7 @@ export const GET = requireRole(['agent'])(
           totalClients: clientCount.length,
         },
       });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

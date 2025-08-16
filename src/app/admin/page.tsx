@@ -256,9 +256,9 @@ export default function SuperAdminDashboard() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Customer Overview</CardTitle>
             <Button 
-              href="/admin/customers" 
               variant="outline"
               size="sm"
+              onClick={() => window.location.href = '/admin/customers'}
             >
               View All
             </Button>

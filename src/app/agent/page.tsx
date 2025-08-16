@@ -1,4 +1,3 @@
-// src/app/agent/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,7 +12,6 @@ import {
   Clock, 
   CheckCircle, 
   AlertCircle, 
-  Users, 
   BarChart3,
   Settings,
   Home,

@@ -5,7 +5,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 export interface EmailTemplate {
   to: string;
   templateId: string;
-  dynamicTemplateData: Record<string, any>;
+  dynamicTemplateData: Record<string, unknown>;
   from?: string;
   subject?: string;
 }

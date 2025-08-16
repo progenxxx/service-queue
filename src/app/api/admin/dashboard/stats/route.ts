@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { serviceRequests, users, companies } from '@/lib/db/schema';
 import { sql, eq } from 'drizzle-orm';
 
 export const GET = requireRole(['super_admin'])(
-  async (req: NextRequest) => {
+  async () => {
     try {
       const requestStats = await db
         .select({
@@ -39,7 +39,7 @@ export const GET = requireRole(['super_admin'])(
           overdueRequests: requestStats[0]?.overdue || 0,
         },
       });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

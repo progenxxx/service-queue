@@ -23,7 +23,7 @@ export const GET = requireRole(['customer', 'customer_admin'])(
       });
 
       return NextResponse.json({ requests });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

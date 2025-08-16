@@ -21,7 +21,7 @@ interface User {
 interface NavigationItem {
   name: string;
   href: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   current: boolean;
 }
 
@@ -30,6 +30,11 @@ interface DashboardLayoutProps {
   navigation: NavigationItem[];
   title: string;
 }
+
+// Move getInitials function outside of component to make it reusable
+const getInitials = (firstName: string, lastName: string) => {
+  return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+};
 
 export default function DashboardLayout({ children, navigation, title }: DashboardLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
@@ -59,10 +64,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
     } catch (error) {
       console.error('Logout failed:', error);
     }
-  };
-
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
 
   return (

@@ -7,14 +7,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2 } from 'lucide-react';
-import logoImage from '@/assets/images/logo.png';
 
 function LoginForm() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [loginType, setLoginType] = useState('credentials');
-  const [imageError, setImageError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -65,20 +63,9 @@ function LoginForm() {
       
       <div className="w-full min-h-[calc(100vh-80px)] flex flex-col items-center justify-start pt-16">
         <div className="mb-8">
-          {!imageError ? (
-            <img
-              src={typeof logoImage === 'string' ? logoImage : logoImage.src}
-              alt="Community Insurance Center"
-              width={200}
-              height={100}
-              className="h-auto"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="w-[200px] h-[100px] bg-gray-200 flex items-center justify-center rounded-lg">
-              <span className="text-gray-500 text-sm">Community Insurance Center</span>
-            </div>
-          )}
+          <div className="w-[200px] h-[100px] bg-gray-200 flex items-center justify-center rounded-lg">
+            <span className="text-gray-500 text-sm">Community Insurance Center</span>
+          </div>
         </div>
 
         <div className="w-full max-w-md px-4 py-3">
