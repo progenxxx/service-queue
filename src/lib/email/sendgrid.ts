@@ -4,26 +4,229 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
 
 export interface EmailTemplate {
   to: string;
+  templateId: string;
+  dynamicTemplateData: Record<string, any>;
+  from?: string;
+  subject?: string;
+}
+
+export interface BasicEmailTemplate {
+  to: string;
   subject: string;
   html: string;
   text?: string;
+  from?: string;
 }
 
-export async function sendEmail({ to, subject, html, text }: EmailTemplate) {
+export async function sendEmail({ 
+  to, 
+  templateId, 
+  dynamicTemplateData, 
+  from 
+}: EmailTemplate) {
   try {
-    await sgMail.send({
+    const msg = {
       to,
-      from: process.env.SENDGRID_FROM_EMAIL!,
-      subject,
-      html,
-      text: text || html.replace(/<[^>]*>/g, ''),
-    });
+      from: from || process.env.SENDGRID_FROM_EMAIL!,
+      templateId,
+      dynamicTemplateData,
+    };
+
+    await sgMail.send(msg);
   } catch (error) {
     throw error;
   }
 }
 
-export const emailTemplates = {
+export async function sendBasicEmail({ 
+  to, 
+  subject, 
+  html, 
+  text, 
+  from 
+}: BasicEmailTemplate) {
+  try {
+    const msg = {
+      to,
+      from: from || process.env.SENDGRID_FROM_EMAIL!,
+      subject,
+      html,
+      text: text || html.replace(/<[^>]*>/g, ''),
+    };
+
+    await sgMail.send(msg);
+  } catch (error) {
+    throw error;
+  }
+}
+
+export const emailService = {
+  async sendCustomerWelcome(userEmail: string, userData: {
+    firstName: string;
+    lastName: string;
+    loginCode: string;
+    companyName: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_CUSTOMER_WELCOME_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...userData,
+        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+      }
+    });
+  },
+
+  async sendAgentWelcome(userEmail: string, userData: {
+    firstName: string;
+    lastName: string;
+    loginCode: string;
+    companyName: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_AGENT_WELCOME_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...userData,
+        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+      }
+    });
+  },
+
+  async sendAdminCredentials(userEmail: string, userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    companyName: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_ADMIN_WELCOME_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...userData,
+        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+      }
+    });
+  },
+
+  async sendNoteAdded(userEmail: string, noteData: {
+    requestId: string;
+    serviceQueueId: string;
+    noteContent: string;
+    authorName: string;
+    clientName: string;
+    requestTitle: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_NOTE_ADDED_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...noteData,
+        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        requestUrl: `${process.env.NEXT_PUBLIC_APP_URL}/requests/${noteData.requestId}`,
+      }
+    });
+  },
+
+  async sendStatusUpdate(userEmail: string, statusData: {
+    requestId: string;
+    serviceQueueId: string;
+    oldStatus: string;
+    newStatus: string;
+    updatedBy: string;
+    clientName: string;
+    requestTitle: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_STATUS_UPDATE_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...statusData,
+        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        requestUrl: `${process.env.NEXT_PUBLIC_APP_URL}/requests/${statusData.requestId}`,
+      }
+    });
+  },
+
+  async sendRequestAssigned(userEmail: string, assignmentData: {
+    requestId: string;
+    serviceQueueId: string;
+    assignedTo: string;
+    assignedBy: string;
+    clientName: string;
+    requestTitle: string;
+    dueDate?: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_REQUEST_ASSIGNED_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...assignmentData,
+        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        requestUrl: `${process.env.NEXT_PUBLIC_APP_URL}/requests/${assignmentData.requestId}`,
+      }
+    });
+  },
+
+  async sendNewRequest(userEmail: string, requestData: {
+    requestId: string;
+    serviceQueueId: string;
+    clientName: string;
+    requestTitle: string;
+    category: string;
+    createdBy: string;
+    priority: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_NEW_REQUEST_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...requestData,
+        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        requestUrl: `${process.env.NEXT_PUBLIC_APP_URL}/requests/${requestData.requestId}`,
+      }
+    });
+  },
+
+  async sendPasswordReset(userEmail: string, resetData: {
+    firstName: string;
+    lastName: string;
+    resetToken: string;
+    expirationTime: string;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_PASSWORD_RESET_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...resetData,
+        resetUrl: `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${resetData.resetToken}`,
+      }
+    });
+  },
+
+  async sendDueDateReminder(userEmail: string, reminderData: {
+    requestId: string;
+    serviceQueueId: string;
+    clientName: string;
+    requestTitle: string;
+    dueDate: string;
+    assignedTo: string;
+    daysUntilDue: number;
+  }) {
+    return sendEmail({
+      to: userEmail,
+      templateId: process.env.SENDGRID_DUE_DATE_REMINDER_TEMPLATE_ID!,
+      dynamicTemplateData: {
+        ...reminderData,
+        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        requestUrl: `${process.env.NEXT_PUBLIC_APP_URL}/requests/${reminderData.requestId}`,
+      }
+    });
+  }
+};
+
+export const legacyEmailTemplates = {
   welcomeCustomer: (loginCode: string) => ({
     subject: 'Welcome to Service Queue - Your Login Code',
     html: `
@@ -35,6 +238,7 @@ export const emailTemplates = {
       </div>
     `,
   }),
+
   welcomeAgent: (loginCode: string) => ({
     subject: 'Service Queue Agent Access - Your Login Code',
     html: `
@@ -46,6 +250,7 @@ export const emailTemplates = {
       </div>
     `,
   }),
+
   adminCredentials: (email: string, password: string) => ({
     subject: 'Service Queue Admin Access - Your Credentials',
     html: `
@@ -55,34 +260,6 @@ export const emailTemplates = {
         <p><strong>Email:</strong> ${email}</p>
         <p><strong>Password:</strong> <span style="font-size: 16px; color: #007bff;">${password}</span></p>
         <p>Please login and change your password immediately for security.</p>
-      </div>
-    `,
-  }),
-  noteAdded: (requestId: string, noteContent: string, authorName: string) => ({
-    subject: `New Note Added to Request ${requestId}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">New Note Added</h2>
-        <p><strong>Request ID:</strong> ${requestId}</p>
-        <p><strong>Added by:</strong> ${authorName}</p>
-        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 15px 0;">
-          <p><strong>Note:</strong></p>
-          <p>${noteContent}</p>
-        </div>
-        <p>Please login to the Service Queue platform to view the full request details.</p>
-      </div>
-    `,
-  }),
-  requestStatusUpdate: (requestId: string, oldStatus: string, newStatus: string, updatedBy: string) => ({
-    subject: `Request ${requestId} Status Updated`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #333;">Request Status Updated</h2>
-        <p><strong>Request ID:</strong> ${requestId}</p>
-        <p><strong>Status changed from:</strong> <span style="text-transform: capitalize;">${oldStatus}</span></p>
-        <p><strong>Status changed to:</strong> <span style="text-transform: capitalize; color: #28a745;">${newStatus}</span></p>
-        <p><strong>Updated by:</strong> ${updatedBy}</p>
-        <p>Please login to the Service Queue platform to view the full request details.</p>
       </div>
     `,
   }),
