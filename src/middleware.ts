@@ -52,16 +52,24 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    if (pathname.startsWith('/admin') && decoded.role !== 'super_admin') {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    if (pathname.startsWith('/agent') && decoded.role !== 'agent') {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-
-    if (pathname.startsWith('/customer') && !['customer', 'customer_admin'].includes(decoded.role)) {
-      return NextResponse.redirect(new URL('/login', request.url));
+    if (pathname.startsWith('/admin')) {
+      if (decoded.role !== 'super_admin') {
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('auth-token');
+        return response;
+      }
+    } else if (pathname.startsWith('/agent')) {
+      if (decoded.role !== 'agent') {
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('auth-token');
+        return response;
+      }
+    } else if (pathname.startsWith('/customer')) {
+      if (!['customer', 'customer_admin'].includes(decoded.role)) {
+        const response = NextResponse.redirect(new URL('/login', request.url));
+        response.cookies.delete('auth-token');
+        return response;
+      }
     }
 
     return NextResponse.next({
@@ -70,10 +78,14 @@ export function middleware(request: NextRequest) {
       },
     });
   } catch {
-    if (apiRoutes) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    const response = apiRoutes 
+      ? NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      : NextResponse.redirect(new URL('/login', request.url));
+    
+    if (!apiRoutes) {
+      response.cookies.delete('auth-token');
     }
-    return NextResponse.redirect(new URL('/login', request.url));
+    return response;
   }
 }
 

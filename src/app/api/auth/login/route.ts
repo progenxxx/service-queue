@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       email: user.email,
       role: user.role,
-      companyId: user.companyId,
+      companyId: user.companyId || null,
       firstName: user.firstName,
       lastName: user.lastName,
     };
