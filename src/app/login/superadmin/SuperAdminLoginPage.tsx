@@ -22,6 +22,8 @@ export default function SuperAdminLoginPage() {
       password: formData.get('password')
     };
 
+    console.log('Attempting super admin login with:', { email: data.email });
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -29,7 +31,9 @@ export default function SuperAdminLoginPage() {
         body: JSON.stringify(data),
       });
 
+      console.log('Login response status:', response.status);
       const result = await response.json();
+      console.log('Login response data:', result);
 
       if (!response.ok) {
         throw new Error(result.error || 'Login failed');
@@ -39,12 +43,13 @@ export default function SuperAdminLoginPage() {
         throw new Error('Access denied. Super admin credentials required.');
       }
 
-      // Use a timeout to ensure the cookie is set before navigation
-      setTimeout(() => {
-        window.location.href = '/admin';
-      }, 100);
+      console.log('Login successful, redirecting to admin dashboard');
+      
+      // Force a full page reload to ensure middleware runs
+      window.location.href = '/admin';
       
     } catch (err) {
+      console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);

@@ -31,9 +31,32 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 export function generateToken(payload: TokenPayload): string {
-  return jwt.sign(payload, process.env.JWT_SECRET!, { expiresIn: '24h' });
+  const secret = process.env.JWT_SECRET;
+  console.log('JWT_SECRET exists:', !!secret);
+  
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+  
+  const token = jwt.sign(payload, secret, { expiresIn: '24h' });
+  console.log('Token generated successfully for user:', payload.userId);
+  return token;
 }
 
 export function verifyToken(token: string): TokenPayload {
-  return jwt.verify(token, process.env.JWT_SECRET!) as TokenPayload;
+  const secret = process.env.JWT_SECRET;
+  console.log('Verifying token, JWT_SECRET exists:', !!secret);
+  
+  if (!secret) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+  
+  try {
+    const decoded = jwt.verify(token, secret) as TokenPayload;
+    console.log('Token verified successfully for user:', decoded.userId);
+    return decoded;
+  } catch (error) {
+    console.error('Token verification failed:', error);
+    throw error;
+  }
 }
