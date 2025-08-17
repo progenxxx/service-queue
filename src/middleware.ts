@@ -6,10 +6,20 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
   const pathname = request.nextUrl.pathname;
 
-  const publicRoutes = ['/login', '/api/auth/login', '/api/auth/logout'];
+  const publicRoutes = [
+    '/login',
+    '/login/agent', 
+    '/login/superadmin',
+    '/api/auth/login', 
+    '/api/auth/logout'
+  ];
   const apiRoutes = pathname.startsWith('/api/');
 
-  if (publicRoutes.includes(pathname)) {
+  const isPublicRoute = publicRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
+
+  if (isPublicRoute) {
     return NextResponse.next();
   }
 
@@ -31,12 +41,6 @@ export function middleware(request: NextRequest) {
       requestHeaders.set('x-company-id', decoded.companyId);
     }
 
-    const response = NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    });
-
     if (pathname === '/') {
       const role = decoded.role;
       if (role === 'super_admin') {
@@ -48,7 +52,23 @@ export function middleware(request: NextRequest) {
       }
     }
 
-    return response;
+    if (pathname.startsWith('/admin') && decoded.role !== 'super_admin') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    if (pathname.startsWith('/agent') && decoded.role !== 'agent') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    if (pathname.startsWith('/customer') && !['customer', 'customer_admin'].includes(decoded.role)) {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    });
   } catch {
     if (apiRoutes) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
@@ -59,6 +79,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api/auth/login|api/auth/logout|_next/static|_next/image|favicon.ico|public).*)',
+    '/((?!_next/static|_next/image|favicon.ico|public).*)',
   ],
 };
