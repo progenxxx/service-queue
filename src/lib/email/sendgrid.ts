@@ -116,7 +116,7 @@ export const emailService = {
             <p>Dear ${userData.firstName} ${userData.lastName},</p>
             <p>You have been granted agent access to the Service Queue platform for ${userData.companyName}.</p>
             <p>Your agent login code is: <strong style="font-size: 18px; color: #087055;">${userData.loginCode}</strong></p>
-            <p>Please use this code to access the Service Queue platform at: ${process.env.NEXT_PUBLIC_APP_URL}/login</p>
+            <p>Please use this code to access the Service Queue platform at: ${process.env.NEXT_PUBLIC_APP_URL}/login/agent</p>
             <p>If you have any questions, please contact the administrator.</p>
             <br>
             <p>Best regards,<br>Service Queue Team</p>
@@ -130,7 +130,7 @@ export const emailService = {
       templateId,
       dynamicTemplateData: {
         ...userData,
-        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login/agent`,
       }
     });
   },
@@ -156,8 +156,48 @@ export const emailService = {
             <p>Your admin credentials are:</p>
             <p><strong>Email:</strong> ${userData.email}</p>
             <p><strong>Password:</strong> <span style="font-size: 16px; color: #087055;">${userData.password}</span></p>
-            <p>Please login at: ${process.env.NEXT_PUBLIC_APP_URL}/login</p>
+            <p>Please login at: ${process.env.NEXT_PUBLIC_APP_URL}/login/superadmin</p>
             <p><strong>Important:</strong> Please change your password immediately after your first login for security.</p>
+            <br>
+            <p>Best regards,<br>Service Queue Team</p>
+          </div>
+        `,
+      });
+    }
+
+    return sendEmail({
+      to: userEmail,
+      templateId,
+      dynamicTemplateData: {
+        ...userData,
+        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login/superadmin`,
+      }
+    });
+  },
+
+  async sendCustomerAdminWelcome(userEmail: string, userData: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    loginCode: string;
+    companyName: string;
+  }) {
+    const templateId = process.env.SENDGRID_CUSTOMER_ADMIN_WELCOME_TEMPLATE_ID;
+    
+    if (!templateId) {
+      return sendBasicEmail({
+        to: userEmail,
+        subject: 'Service Queue Customer Admin Access - Your Credentials',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Service Queue Customer Admin Access</h2>
+            <p>Dear ${userData.firstName} ${userData.lastName},</p>
+            <p>You have been granted customer admin access to the Service Queue platform for ${userData.companyName}.</p>
+            <p>Your login credentials are:</p>
+            <p><strong>Email:</strong> ${userData.email}</p>
+            <p><strong>Login Code:</strong> <span style="font-size: 16px; color: #087055;">${userData.loginCode}</span></p>
+            <p>Please login at: ${process.env.NEXT_PUBLIC_APP_URL}/login</p>
+            <p><strong>Instructions:</strong> Use the "Admin" tab and enter both your email and login code to access the customer admin portal.</p>
             <br>
             <p>Best regards,<br>Service Queue Team</p>
           </div>

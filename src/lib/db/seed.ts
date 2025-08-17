@@ -55,15 +55,14 @@ async function seed() {
       },
     ]);
 
-    // Customer Admin
-    const cicAdminPassword = 'CICAdmin123!';
-    const hashedCICAdminPassword = await hashPassword(cicAdminPassword);
+    // Customer Admin - uses email + login code
+    const cicAdminLoginCode = generateLoginCode();
 
     const [customerAdmin] = await db.insert(users).values({
       firstName: 'John',
       lastName: 'Smith',
       email: 'spawn0731@gmail.com',
-      passwordHash: hashedCICAdminPassword,
+      loginCode: cicAdminLoginCode,
       role: 'customer_admin',
       companyId: cicCompany.id,
       isActive: true,
@@ -91,11 +90,11 @@ async function seed() {
         companyName: axsCompany.companyName,
       });
 
-      await emailService.sendAdminCredentials(customerAdmin.email, {
+      await emailService.sendCustomerAdminWelcome(customerAdmin.email, {
         firstName: customerAdmin.firstName,
         lastName: customerAdmin.lastName,
         email: customerAdmin.email,
-        password: cicAdminPassword,
+        loginCode: cicAdminLoginCode,
         companyName: cicCompany.companyName,
       });
 

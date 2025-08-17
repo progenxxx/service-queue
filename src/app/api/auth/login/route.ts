@@ -10,8 +10,8 @@ const loginSchema = z.object({
   email: z.string().email().optional(),
   password: z.string().optional(),
 }).refine(
-  (data) => (data.loginCode) || (data.email && data.password),
-  { message: "Either loginCode or email+password is required" }
+  (data) => (data.loginCode) || (data.email && data.password) || (data.email && data.loginCode),
+  { message: "Either loginCode, email+password, or email+loginCode is required" }
 );
 
 export async function POST(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
     let user;
 
-    if (validatedData.loginCode) {
+    if (validatedData.loginCode && !validatedData.email) {
       user = await db.query.users.findFirst({
         where: and(
           eq(users.loginCode, validatedData.loginCode),
@@ -60,6 +60,24 @@ export async function POST(request: NextRequest) {
       if (!isValidPassword) {
         return NextResponse.json(
           { error: 'Invalid email or password' },
+          { status: 401 }
+        );
+      }
+    } else if (validatedData.email && validatedData.loginCode) {
+      user = await db.query.users.findFirst({
+        where: and(
+          eq(users.email, validatedData.email),
+          eq(users.loginCode, validatedData.loginCode),
+          eq(users.isActive, true)
+        ),
+        with: {
+          company: true,
+        },
+      });
+
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Invalid email or login code' },
           { status: 401 }
         );
       }

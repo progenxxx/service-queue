@@ -1,10 +1,5 @@
-import LoginForm from '@/components/auth/LoginForm';
+import CustomerLoginPage from './CustomerLoginPage';
 
-export default function LoginPage() {
-  return (
-    <div className="w-full">
-      <LoginForm />
-    </div>
-  );
+export default function Page() {
+  return <CustomerLoginPage />;
 }
-
