@@ -39,7 +39,11 @@ export default function SuperAdminLoginPage() {
         throw new Error('Access denied. Super admin credentials required.');
       }
 
-      window.location.href = '/admin';
+      // Use a timeout to ensure the cookie is set before navigation
+      setTimeout(() => {
+        window.location.href = '/admin';
+      }, 100);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -81,7 +85,7 @@ export default function SuperAdminLoginPage() {
                     id="email"
                     name="email"
                     type="email"
-                    placeholder="admin@company.com"
+                    placeholder="aglapay.markranny@gmail.com"
                     required
                     disabled={isLoading}
                     className="w-full h-12 px-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#087055] focus:border-[#087055]"
@@ -101,6 +105,9 @@ export default function SuperAdminLoginPage() {
                     disabled={isLoading}
                     className="w-full h-12 px-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#087055] focus:border-[#087055]"
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Default password from seed: Admin123!
+                  </p>
                 </div>
 
                 {error && (

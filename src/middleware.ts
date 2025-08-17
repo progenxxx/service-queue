@@ -6,33 +6,44 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
   const pathname = request.nextUrl.pathname;
 
+  // Public routes that don't need authentication
   const publicRoutes = [
     '/login',
     '/login/agent', 
-    '/login/superadmin',
+    '/login/superadmin'
+  ];
+
+  // API routes that don't need middleware protection
+  const publicApiRoutes = [
     '/api/auth/login', 
     '/api/auth/logout'
   ];
-  const apiRoutes = pathname.startsWith('/api/');
 
-  const isPublicRoute = publicRoutes.some(route => 
-    pathname === route || pathname.startsWith(route + '/')
-  );
+  // Check if it's a public route
+  const isPublicRoute = publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
+  const isPublicApiRoute = publicApiRoutes.some(route => pathname === route);
+  const isApiRoute = pathname.startsWith('/api/');
 
-  if (isPublicRoute) {
+  // Allow public routes and API routes to pass through
+  if (isPublicRoute || isPublicApiRoute) {
     return NextResponse.next();
   }
 
+  // For protected API routes, require authentication
+  if (isApiRoute && !token) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
+  // For protected pages, redirect to login if no token
   if (!token) {
-    if (apiRoutes) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
-    }
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
+  // Verify token
   try {
     const decoded = verifyToken(token);
 
+    // Set headers for API routes
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-user-id', decoded.userId);
     requestHeaders.set('x-user-role', decoded.role);
@@ -41,51 +52,42 @@ export function middleware(request: NextRequest) {
       requestHeaders.set('x-company-id', decoded.companyId);
     }
 
+    // Handle root path redirect
     if (pathname === '/') {
-      const role = decoded.role;
-      if (role === 'super_admin') {
+      if (decoded.role === 'super_admin') {
         return NextResponse.redirect(new URL('/admin', request.url));
-      } else if (role === 'agent') {
+      } else if (decoded.role === 'agent') {
         return NextResponse.redirect(new URL('/agent', request.url));
       } else {
         return NextResponse.redirect(new URL('/customer', request.url));
       }
     }
 
-    if (pathname.startsWith('/admin')) {
-      if (decoded.role !== 'super_admin') {
-        const response = NextResponse.redirect(new URL('/login', request.url));
-        response.cookies.delete('auth-token');
-        return response;
-      }
-    } else if (pathname.startsWith('/agent')) {
-      if (decoded.role !== 'agent') {
-        const response = NextResponse.redirect(new URL('/login', request.url));
-        response.cookies.delete('auth-token');
-        return response;
-      }
-    } else if (pathname.startsWith('/customer')) {
-      if (!['customer', 'customer_admin'].includes(decoded.role)) {
-        const response = NextResponse.redirect(new URL('/login', request.url));
-        response.cookies.delete('auth-token');
-        return response;
-      }
+    // Check role-based access
+    if (pathname.startsWith('/admin') && decoded.role !== 'super_admin') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    
+    if (pathname.startsWith('/agent') && decoded.role !== 'agent') {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+    
+    if (pathname.startsWith('/customer') && !['customer', 'customer_admin'].includes(decoded.role)) {
+      return NextResponse.redirect(new URL('/login', request.url));
     }
 
+    // Allow the request to proceed with updated headers
     return NextResponse.next({
       request: {
         headers: requestHeaders,
       },
     });
-  } catch {
-    const response = apiRoutes 
-      ? NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-      : NextResponse.redirect(new URL('/login', request.url));
-    
-    if (!apiRoutes) {
-      response.cookies.delete('auth-token');
+  } catch (error) {
+    // Invalid token - redirect to login for pages, return 401 for API
+    if (isApiRoute) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
-    return response;
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 }
 
