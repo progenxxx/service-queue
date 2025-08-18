@@ -31,18 +31,14 @@ export const GET = requireRole(['super_admin'])(
             where ${serviceRequests.companyId} = ${companies.id} 
             and ${serviceRequests.taskStatus} = 'closed'
           ), 0)`,
-          totalUsers: sql<number>`coalesce((
-            select count(*) 
-            from ${users} 
-            where ${users.companyId} = ${companies.id} 
-            and ${users.isActive} = true
-          ), 0)`,
+          modifiedBy: companies.primaryContact,
+          modifiedOn: sql<string>`to_char(${companies.updatedAt}, 'MM/DD/YYYY HH12:MI AM')`,
         })
         .from(companies)
         .orderBy(companies.companyName);
 
       return NextResponse.json({ customers });
-    } catch {
+    } catch (error) {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

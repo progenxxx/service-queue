@@ -30,7 +30,6 @@ interface CustomerData {
 
 const navigation = [
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: true },
-  { name: 'Dashboard', href: '/admin', icon: Home, current: false },
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },

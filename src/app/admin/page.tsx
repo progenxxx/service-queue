@@ -58,8 +58,8 @@ interface RecentActivity {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/admin', icon: Home, current: true },
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
+  { name: 'Dashboard', href: '/admin', icon: Home, current: true },
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },

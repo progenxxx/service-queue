@@ -6,9 +6,6 @@ export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
   const pathname = request.nextUrl.pathname;
 
-  console.log('Middleware called for:', pathname);
-  console.log('Token exists:', !!token);
-
   const publicRoutes = [
     '/login',
     '/login/agent', 
@@ -24,12 +21,10 @@ export async function middleware(request: NextRequest) {
   );
   
   if (isPublicRoute) {
-    console.log('Public route, allowing through');
     return NextResponse.next();
   }
   
   if (!token) {
-    console.log('No token found');
     if (apiRoutes) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
@@ -38,7 +33,6 @@ export async function middleware(request: NextRequest) {
   
   try {
     const decoded = await verifyTokenAsync(token);
-    console.log('Token decoded successfully:', { userId: decoded.userId, role: decoded.role });
     
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-user-id', decoded.userId);
@@ -56,23 +50,25 @@ export async function middleware(request: NextRequest) {
     });
     
     if (pathname === '/') {
-      console.log('Root path redirect for role:', decoded.role);
       const role = decoded.role;
       if (role === 'super_admin') {
-        console.log('Redirecting super_admin to /admin');
-        return NextResponse.redirect(new URL('/admin', request.url));
+        return NextResponse.redirect(new URL('/admin/customers', request.url));
       } else if (role === 'agent') {
-        console.log('Redirecting agent to /agent');
         return NextResponse.redirect(new URL('/agent', request.url));
       } else {
-        console.log('Redirecting customer to /customer');
         return NextResponse.redirect(new URL('/customer', request.url));
+      }
+    }
+    
+    if (pathname === '/admin') {
+      const role = decoded.role;
+      if (role === 'super_admin') {
+        return NextResponse.redirect(new URL('/admin/customers', request.url));
       }
     }
     
     return response;
   } catch {
-    console.log('Token verification failed');
     if (apiRoutes) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
