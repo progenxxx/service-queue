@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -66,7 +66,7 @@ export default function AllCustomersPage() {
 
   if (loading) {
     return (
-      <DashboardLayout navigation={navigation} title="All Customers">
+      <DashboardLayout navigation={navigation} title="Customers">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#087055]"></div>
         </div>
@@ -77,6 +77,7 @@ export default function AllCustomersPage() {
   return (
     <DashboardLayout navigation={navigation} title="Customers">
       <div className="space-y-6">
+        {/* Header with search and add button */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <Input
@@ -94,6 +95,7 @@ export default function AllCustomersPage() {
           </Button>
         </div>
 
+        {/* Customer table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -126,17 +128,17 @@ export default function AllCustomersPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
+                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 font-semibold px-3 py-1">
                           {customer.openTickets}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 font-semibold px-3 py-1">
                           {customer.closedTickets}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+                        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100 font-semibold px-3 py-1">
                           {customer.wipTickets}
                         </Badge>
                       </TableCell>

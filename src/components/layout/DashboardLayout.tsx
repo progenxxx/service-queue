@@ -70,8 +70,9 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile sidebar */}
       <div className={`fixed inset-0 flex z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50" onClick={() => setSidebarOpen(false)} />
         <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
             <button
@@ -87,13 +88,16 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         <div className="flex-shrink-0 w-14" />
       </div>
 
+      {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64 bg-white border-r border-gray-200 h-screen fixed">
           <SidebarContent navigation={navigation} imageError={imageError} setImageError={setImageError} />
         </div>
       </div>
 
+      {/* Main content */}
       <div className="flex flex-col flex-1 lg:pl-64">
+        {/* Top header */}
         <div className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 lg:px-8 sticky top-0 z-30">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -108,6 +112,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
             </div>
 
             <div className="flex items-center space-x-4">
+              {/* Notifications */}
               <div className="relative">
                 <Button variant="ghost" size="sm" className="p-2">
                   <Bell className="h-5 w-5 text-gray-500" />
@@ -117,6 +122,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
                 </span>
               </div>
 
+              {/* User dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -154,6 +160,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
           </div>
         </div>
 
+        {/* Dropdown overlay */}
         {dropdownOpen && (
           <div
             className="fixed inset-0 z-40"
@@ -161,6 +168,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
           />
         )}
 
+        {/* Main content area */}
         <main className="flex-1 p-6">
           {children}
         </main>
@@ -176,6 +184,7 @@ function SidebarContent({ navigation, imageError, setImageError }: {
 }) {
   return (
     <div className="flex flex-col h-full">
+      {/* Logo section */}
       <div className="bg-[#f3f4f6] text-white px-4 py-8 border-b border-gray-300">
         <div className="flex justify-center">
           {!imageError ? (
@@ -195,6 +204,7 @@ function SidebarContent({ navigation, imageError, setImageError }: {
         </div>
       </div>
       
+      {/* Navigation */}
       <nav className="flex-1 bg-gray-100 mt-4">
         {navigation.map((item) => (
           <a

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +12,7 @@ import {
   UserCheck, 
   BarChart3,
   Settings,
-  Home,
   Users,
-  Plus,
-  Eye,
-  EyeOff,
   Trash2
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -53,7 +49,6 @@ export default function CustomerManagementPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [showAddCustomer, setShowAddCustomer] = useState(false);
-  const [showUsers, setShowUsers] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     companyName: '',
     primaryContact: '',
@@ -70,10 +65,14 @@ export default function CustomerManagementPage() {
       const response = await fetch('/api/admin/customers/manage');
       if (response.ok) {
         const data = await response.json();
-        setCustomers(data.customers);
+        setCustomers(data.customers || []);
+      } else {
+        console.error('Failed to fetch customers:', response.status, response.statusText);
+        setCustomers([]);
       }
     } catch (error) {
       console.error('Failed to fetch customers:', error);
+      setCustomers([]);
     } finally {
       setLoading(false);
     }
@@ -119,8 +118,9 @@ export default function CustomerManagementPage() {
   }
 
   return (
-    <DashboardLayout navigation={navigation} title="Customer Management">
+    <DashboardLayout navigation={navigation} title="Customers">
       <div className="space-y-6">
+        {/* Header with search and add button */}
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <Input
@@ -190,6 +190,7 @@ export default function CustomerManagementPage() {
           </Dialog>
         </div>
 
+        {/* Customer table */}
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -205,74 +206,47 @@ export default function CustomerManagementPage() {
               <TableBody>
                 {filteredCustomers.length > 0 ? (
                   filteredCustomers.map((customer) => (
-                    <>
-                      <TableRow key={customer.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium text-gray-900">
-                          {customer.companyName}
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          {customer.primaryContact}
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          {customer.phone}
-                        </TableCell>
-                        <TableCell className="text-gray-600">
-                          {customer.email}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <div className="flex space-x-2 justify-center">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
-                              onClick={() => setShowUsers(showUsers === customer.id ? null : customer.id)}
-                            >
-                              {showUsers === customer.id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                              {showUsers === customer.id ? 'Hide Users' : 'View Users'}
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
-                              onClick={() => handleViewDetails(customer)}
-                            >
-                              View Details
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      {showUsers === customer.id && customer.users && customer.users.length > 0 && (
-                        <TableRow>
-                          <TableCell colSpan={5} className="bg-gray-50 p-4">
-                            <div className="space-y-2">
-                              <h4 className="font-medium text-gray-900">Users for {customer.companyName}</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                {customer.users.map((user) => (
-                                  <div key={user.id} className="bg-white p-3 rounded border">
-                                    <div className="text-sm font-medium text-gray-900">
-                                      {user.firstName} {user.lastName}
-                                    </div>
-                                    <div className="text-xs text-gray-500">{user.email}</div>
-                                    <div className="text-xs">
-                                      <span className={`inline-block px-2 py-1 rounded text-xs ${
-                                        user.role === 'customer_admin' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'
-                                      }`}>
-                                        {user.role.replace('_', ' ')}
-                                      </span>
-                                      <span className={`ml-2 inline-block px-2 py-1 rounded text-xs ${
-                                        user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                      }`}>
-                                        {user.isActive ? 'Active' : 'Inactive'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </>
+                    <TableRow key={customer.id} className="hover:bg-gray-50">
+                      <TableCell className="font-medium text-gray-900">
+                        {customer.companyName}
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {customer.primaryContact}
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {customer.phone}
+                      </TableCell>
+                      <TableCell className="text-gray-600">
+                        {customer.email}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex space-x-2 justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
+                            onClick={() => handleViewDetails(customer)}
+                          >
+                            View Users
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
+                            onClick={() => handleViewDetails(customer)}
+                          >
+                            View Details
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 border-red-600 hover:bg-red-600 hover:text-white"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
                   ))
                 ) : (
                   <TableRow>
@@ -286,6 +260,7 @@ export default function CustomerManagementPage() {
           </CardContent>
         </Card>
 
+        {/* Customer Details Modal */}
         {selectedCustomer && (
           <Dialog open={!!selectedCustomer} onOpenChange={() => setSelectedCustomer(null)}>
             <DialogContent className="max-w-2xl">
