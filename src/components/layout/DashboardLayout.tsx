@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { LogOut, Menu, X } from 'lucide-react';
+import { LogOut, Menu, X, Bell, ChevronDown } from 'lucide-react';
+import logoImage from '@/assets/images/logo.png';
 
 interface User {
   id: string;
@@ -31,7 +32,6 @@ interface DashboardLayoutProps {
   title: string;
 }
 
-// Move getInitials function outside of component to make it reusable
 const getInitials = (firstName: string, lastName: string) => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
@@ -39,6 +39,8 @@ const getInitials = (firstName: string, lastName: string) => {
 export default function DashboardLayout({ children, navigation, title }: DashboardLayoutProps) {
   const [user, setUser] = useState<User | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -67,8 +69,8 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gray-100">
-      <div className={`fixed inset-0 flex z-40 md:hidden ${sidebarOpen ? '' : 'hidden'}`}>
+    <div className="min-h-screen bg-gray-50 flex">
+      <div className={`fixed inset-0 flex z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
         <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
           <div className="absolute top-0 right-0 -mr-12 pt-2">
@@ -80,115 +82,134 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
               <X className="h-6 w-6 text-white" />
             </button>
           </div>
-          <SidebarContent navigation={navigation} user={user} onLogout={handleLogout} />
+          <SidebarContent navigation={navigation} imageError={imageError} setImageError={setImageError} />
         </div>
         <div className="flex-shrink-0 w-14" />
       </div>
 
-      <div className="hidden md:flex md:flex-shrink-0">
-        <div className="flex flex-col w-64">
-          <SidebarContent navigation={navigation} user={user} onLogout={handleLogout} />
+      <div className="hidden lg:flex lg:flex-shrink-0">
+        <div className="flex flex-col w-64 bg-white border-r border-gray-200 h-screen fixed">
+          <SidebarContent navigation={navigation} imageError={imageError} setImageError={setImageError} />
         </div>
       </div>
 
-      <div className="flex flex-col w-0 flex-1 overflow-hidden">
-        <div className="md:hidden pl-1 pt-1 sm:pl-3 sm:pt-3">
-          <button
-            type="button"
-            className="-ml-0.5 -mt-0.5 h-12 w-12 inline-flex items-center justify-center rounded-md text-gray-500 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500"
-            onClick={() => setSidebarOpen(true)}
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-        </div>
-
-        <main className="flex-1 relative z-0 overflow-y-auto focus:outline-none">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+      <div className="flex flex-col flex-1 lg:pl-64">
+        <div className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 lg:px-8 sticky top-0 z-30">
+          <div className="flex justify-between h-16">
+            <div className="flex items-center">
+              <button
+                type="button"
+                className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 mr-2"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
             </div>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
+
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <Button variant="ghost" size="sm" className="p-2">
+                  <Bell className="h-5 w-5 text-gray-500" />
+                </Button>
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  3
+                </span>
+              </div>
+
+              <div className="relative">
+                <button
+                  onClick={() => setDropdownOpen(!dropdownOpen)}
+                  className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 transition-colors"
+                >
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="bg-[#087055] text-white text-sm">
+                      {user ? getInitials(user.firstName, user.lastName) : 'U'}
+                    </AvatarFallback>
+                  </Avatar>
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                </button>
+
+                {dropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-sm font-medium text-gray-900">
+                        {user ? `${user.firstName} ${user.lastName}` : 'Loading...'}
+                      </p>
+                      <p className="text-xs text-gray-500">{user?.email}</p>
+                    </div>
+                    <div className="py-1">
+                      <button
+                        onClick={handleLogout}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+        </div>
+
+        {dropdownOpen && (
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setDropdownOpen(false)}
+          />
+        )}
+
+        <main className="flex-1 p-6">
+          {children}
         </main>
       </div>
     </div>
   );
 }
 
-function SidebarContent({ navigation, user, onLogout }: { 
-  navigation: NavigationItem[]; 
-  user: User | null; 
-  onLogout: () => void; 
+function SidebarContent({ navigation, imageError, setImageError }: { 
+  navigation: NavigationItem[];
+  imageError: boolean;
+  setImageError: (error: boolean) => void;
 }) {
   return (
-    <div className="flex flex-col h-0 flex-1 border-r border-gray-200 bg-white">
-      <div className="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-        <div className="flex items-center flex-shrink-0 px-4">
-          <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <div className="h-8 w-8 bg-[#087055] rounded text-white flex items-center justify-center text-sm font-medium">
-                SQ
-              </div>
+    <div className="flex flex-col h-full">
+      <div className="bg-[#f3f4f6] text-white px-4 py-8 border-b border-gray-300">
+        <div className="flex justify-center">
+          {!imageError ? (
+            <img
+              src={typeof logoImage === 'string' ? logoImage : logoImage.src}
+              alt="Community Insurance Center"
+              width={120}
+              height={60}
+              className="h-auto w-auto max-w-[120px]"
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-[120px] h-[60px] bg-white rounded flex items-center justify-center">
+              <span className="text-[#087055] text-xs font-bold">CIC</span>
             </div>
-            <div className="ml-3">
-              <p className="text-sm font-medium text-gray-900">Service Queue</p>
-              {user?.company && (
-                <p className="text-xs text-gray-500">{user.company.companyName}</p>
-              )}
-            </div>
-          </div>
+          )}
         </div>
-        <nav className="mt-5 flex-1 px-2 space-y-1">
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            return (
-              <a
-                key={item.name}
-                href={item.href}
-                className={`${
-                  item.current
-                    ? 'bg-gray-100 text-gray-900'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                } group flex items-center px-2 py-2 text-sm font-medium rounded-md`}
-              >
-                <Icon
-                  className={`${
-                    item.current ? 'text-gray-500' : 'text-gray-400 group-hover:text-gray-500'
-                  } mr-3 flex-shrink-0 h-6 w-6`}
-                />
-                {item.name}
-              </a>
-            );
-          })}
-        </nav>
       </div>
-      <div className="flex-shrink-0 flex border-t border-gray-200 p-4">
-        <div className="flex items-center w-full">
-          <div>
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-[#087055] text-white">
-                {user ? getInitials(user.firstName, user.lastName) : 'U'}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-          <div className="ml-3 flex-1">
-            <p className="text-sm font-medium text-gray-700">
-              {user ? `${user.firstName} ${user.lastName}` : 'Loading...'}
-            </p>
-            <p className="text-xs text-gray-500">{user?.role.replace('_', ' ')}</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onLogout}
-            className="ml-3 text-gray-400 hover:text-gray-600"
+      
+      <nav className="flex-1 bg-gray-100 mt-4">
+        {navigation.map((item) => (
+          <a
+            key={item.name}
+            href={item.href}
+            className={`${
+              item.current
+                ? 'bg-white text-gray-900 border-r-4 border-[#087055]'
+                : 'text-gray-700 hover:bg-gray-200'
+            } block px-6 py-3 text-sm font-medium transition-colors duration-200 border-b border-gray-300`}
           >
-            <LogOut className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+            {item.name}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }

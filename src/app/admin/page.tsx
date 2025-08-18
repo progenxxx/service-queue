@@ -15,7 +15,11 @@ import {
   Settings,
   Home,
   UserPlus,
-  Plus
+  Plus,
+  TrendingUp,
+  Clock,
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 
 interface AdminStats {
@@ -120,7 +124,7 @@ export default function SuperAdminDashboard() {
 
   if (loading) {
     return (
-      <DashboardLayout navigation={navigation} title="Super Admin Dashboard">
+      <DashboardLayout navigation={navigation} title="Dashboard Overview">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#087055]"></div>
         </div>
@@ -129,79 +133,107 @@ export default function SuperAdminDashboard() {
   }
 
   return (
-    <DashboardLayout navigation={navigation} title="Super Admin Dashboard">
-      <div className="py-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalRequests || 0}</div>
-              <p className="text-xs text-muted-foreground">Across all customers</p>
+    <DashboardLayout navigation={navigation} title="Dashboard Overview">
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600">Total Requests</p>
+                  <p className="text-3xl font-bold text-blue-900">{stats?.totalRequests || 0}</p>
+                  <p className="text-xs text-blue-600 mt-1">Across all customers</p>
+                </div>
+                <div className="bg-blue-500 p-3 rounded-full">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Customers</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalCustomers || 0}</div>
-              <p className="text-xs text-muted-foreground">Active companies</p>
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600">Customers</p>
+                  <p className="text-3xl font-bold text-green-900">{stats?.totalCustomers || 0}</p>
+                  <p className="text-xs text-green-600 mt-1">Active companies</p>
+                </div>
+                <div className="bg-green-500 p-3 rounded-full">
+                  <Building2 className="h-6 w-6 text-white" />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Agents</CardTitle>
-              <UserCheck className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalAgents || 0}</div>
-              <p className="text-xs text-muted-foreground">Active agents</p>
+          <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600">Agents</p>
+                  <p className="text-3xl font-bold text-purple-900">{stats?.totalAgents || 0}</p>
+                  <p className="text-xs text-purple-600 mt-1">Active agents</p>
+                </div>
+                <div className="bg-purple-500 p-3 rounded-full">
+                  <UserCheck className="h-6 w-6 text-white" />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalUsers || 0}</div>
-              <p className="text-xs text-muted-foreground">System wide</p>
+          <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-orange-600">Total Users</p>
+                  <p className="text-3xl font-bold text-orange-900">{stats?.totalUsers || 0}</p>
+                  <p className="text-xs text-orange-600 mt-1">System wide</p>
+                </div>
+                <div className="bg-orange-500 p-3 rounded-full">
+                  <Users className="h-6 w-6 text-white" />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Request Status</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-[#087055]" />
+                Request Status Overview
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Active</span>
-                  <Badge className="bg-blue-100 text-blue-800">
-                    {stats?.activeRequests || 0}
-                  </Badge>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-500" />
+                  <span className="text-sm font-medium text-blue-700">Active</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Completed</span>
-                  <Badge className="bg-green-100 text-green-800">
-                    {stats?.completedRequests || 0}
-                  </Badge>
+                <Badge className="bg-blue-100 text-blue-800">
+                  {stats?.activeRequests || 0}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-medium text-green-700">Completed</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Overdue</span>
-                  <Badge className="bg-red-100 text-red-800">
-                    {stats?.overdueRequests || 0}
-                  </Badge>
+                <Badge className="bg-green-100 text-green-800">
+                  {stats?.completedRequests || 0}
+                </Badge>
+              </div>
+              
+              <div className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  <span className="text-sm font-medium text-red-700">Overdue</span>
                 </div>
+                <Badge className="bg-red-100 text-red-800">
+                  {stats?.overdueRequests || 0}
+                </Badge>
               </div>
             </CardContent>
           </Card>
@@ -214,122 +246,126 @@ export default function SuperAdminDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <Button 
                   variant="outline" 
-                  className="h-20 flex flex-col items-center justify-center"
+                  className="h-20 flex flex-col items-center justify-center hover:bg-gray-50"
                   onClick={() => window.location.href = '/admin/customers/manage'}
                 >
-                  <Plus className="h-5 w-5 mb-1" />
-                  Add Customer
+                  <Plus className="h-5 w-5 mb-2 text-[#087055]" />
+                  <span className="text-sm">Add Customer</span>
                 </Button>
                 
                 <Button 
                   variant="outline" 
-                  className="h-20 flex flex-col items-center justify-center"
+                  className="h-20 flex flex-col items-center justify-center hover:bg-gray-50"
                   onClick={() => window.location.href = '/admin/agents'}
                 >
-                  <UserPlus className="h-5 w-5 mb-1" />
-                  Add Agent
+                  <UserPlus className="h-5 w-5 mb-2 text-[#087055]" />
+                  <span className="text-sm">Add Agent</span>
                 </Button>
                 
                 <Button 
                   variant="outline" 
-                  className="h-20 flex flex-col items-center justify-center"
+                  className="h-20 flex flex-col items-center justify-center hover:bg-gray-50"
                   onClick={() => window.location.href = '/admin/reports'}
                 >
-                  <BarChart3 className="h-5 w-5 mb-1" />
-                  View Reports
+                  <BarChart3 className="h-5 w-5 mb-2 text-[#087055]" />
+                  <span className="text-sm">View Reports</span>
                 </Button>
                 
                 <Button 
                   variant="outline" 
-                  className="h-20 flex flex-col items-center justify-center"
+                  className="h-20 flex flex-col items-center justify-center hover:bg-gray-50"
                   onClick={() => window.location.href = '/admin/customers'}
                 >
-                  <Building2 className="h-5 w-5 mb-1" />
-                  All Customers
+                  <Building2 className="h-5 w-5 mb-2 text-[#087055]" />
+                  <span className="text-sm">All Customers</span>
                 </Button>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <Card className="mb-6">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Customer Overview</CardTitle>
             <Button 
               variant="outline"
               size="sm"
               onClick={() => window.location.href = '/admin/customers'}
+              className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
             >
               View All
             </Button>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Primary Contact</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Open</TableHead>
-                  <TableHead>WIP</TableHead>
-                  <TableHead>Closed</TableHead>
-                  <TableHead>Users</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {customers.length > 0 ? (
-                  customers.map((customer) => (
-                    <TableRow key={customer.id}>
-                      <TableCell className="font-medium">
-                        <a 
-                          href={`/admin/customers/${customer.id}`}
-                          className="text-[#087055] hover:underline"
-                        >
-                          {customer.companyName}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Primary Contact</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead className="text-center">Open</TableHead>
+                    <TableHead className="text-center">WIP</TableHead>
+                    <TableHead className="text-center">Closed</TableHead>
+                    <TableHead className="text-center">Users</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {customers.length > 0 ? (
+                    customers.map((customer) => (
+                      <TableRow key={customer.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">
+                          <a 
+                            href={`/admin/customers/${customer.id}`}
+                            className="text-[#087055] hover:underline"
+                          >
+                            {customer.companyName}
+                          </a>
+                        </TableCell>
+                        <TableCell>{customer.primaryContact}</TableCell>
+                        <TableCell className="text-gray-600">{customer.email}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-blue-100 text-blue-800">
+                            {customer.openTickets}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-orange-100 text-orange-800">
+                            {customer.wipTickets}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className="bg-green-100 text-green-800">
+                            {customer.closedTickets}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-center">{customer.totalUsers}</TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => window.location.href = `/admin/customers/${customer.id}`}
+                            className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
+                          >
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                        No customers found. 
+                        <a href="/admin/customers/manage" className="text-[#087055] hover:underline ml-1">
+                          Add your first customer
                         </a>
                       </TableCell>
-                      <TableCell>{customer.primaryContact}</TableCell>
-                      <TableCell>{customer.email}</TableCell>
-                      <TableCell>
-                        <Badge className="bg-blue-100 text-blue-800">
-                          {customer.openTickets}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="bg-orange-100 text-orange-800">
-                          {customer.wipTickets}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="bg-green-100 text-green-800">
-                          {customer.closedTickets}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{customer.totalUsers}</TableCell>
-                      <TableCell>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={() => window.location.href = `/admin/customers/${customer.id}`}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                      No customers found. 
-                      <a href="/admin/customers/manage" className="text-[#087055] hover:underline ml-1">
-                        Add your first customer
-                      </a>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
@@ -341,13 +377,15 @@ export default function SuperAdminDashboard() {
             <div className="space-y-4">
               {recentActivity.length > 0 ? (
                 recentActivity.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg border">
-                    {getActivityIcon(activity.type)}
+                  <div key={activity.id} className="flex items-start space-x-3 p-4 rounded-lg border border-gray-100 hover:bg-gray-50">
+                    <div className="flex-shrink-0">
+                      {getActivityIcon(activity.type)}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">
                         {activity.description}
                       </p>
-                      <div className="flex items-center space-x-2 text-xs text-gray-500">
+                      <div className="flex items-center space-x-2 text-xs text-gray-500 mt-1">
                         <span>{`${activity.user.firstName} ${activity.user.lastName}`}</span>
                         {activity.company && (
                           <>
