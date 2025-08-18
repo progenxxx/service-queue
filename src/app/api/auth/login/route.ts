@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { verifyPassword, generateToken } from '@/lib/auth/utils';
+import { verifyPassword, generateTokenAsync } from '@/lib/auth/utils-node';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
       lastName: user.lastName,
     };
 
-    const token = generateToken(tokenPayload);
+    const token = await generateTokenAsync(tokenPayload);
 
     const response = NextResponse.json({
       success: true,
@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    console.error('Login error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,6 +1,4 @@
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import { randomBytes } from 'crypto';
 
 export interface TokenPayload {
   userId: string;
@@ -12,13 +10,20 @@ export interface TokenPayload {
 }
 
 export function generateLoginCode(): string {
-  return randomBytes(4).toString('hex').toUpperCase();
+  // Use Web Crypto API which is available in both environments
+  const array = new Uint8Array(4);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
 }
 
 export function generateServiceQueueId(): string {
   const prefix = 'SQ';
   const timestamp = Date.now().toString().slice(-6);
-  const random = randomBytes(2).toString('hex').toUpperCase();
+  
+  // Use Web Crypto API which is available in both environments
+  const array = new Uint8Array(2);
+  crypto.getRandomValues(array);
+  const random = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
   return `${prefix}${timestamp}${random}`;
 }
 
@@ -30,7 +35,97 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function generateToken(payload: TokenPayload): string {
+// Simple JWT implementation using Web Crypto API only
+async function createJWT(payload: TokenPayload, secret: string): Promise<string> {
+  const header = {
+    alg: 'HS256',
+    typ: 'JWT'
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const jwtPayload = {
+    ...payload,
+    iat: now,
+    exp: now + (24 * 60 * 60) // 24 hours
+  };
+
+  const encoder = new TextEncoder();
+  const headerBase64 = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const payloadBase64 = btoa(JSON.stringify(jwtPayload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  
+  const data = `${headerBase64}.${payloadBase64}`;
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    key,
+    encoder.encode(data)
+  );
+  
+  const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+  
+  return `${data}.${signatureBase64}`;
+}
+
+async function verifyJWT(token: string, secret: string): Promise<TokenPayload> {
+  const parts = token.split('.');
+  if (parts.length !== 3) {
+    throw new Error('Invalid token format');
+  }
+
+  const [headerBase64, payloadBase64, signatureBase64] = parts;
+  
+  // Verify signature
+  const encoder = new TextEncoder();
+  const data = `${headerBase64}.${payloadBase64}`;
+  
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+  
+  const signature = Uint8Array.from(
+    atob(signatureBase64.replace(/-/g, '+').replace(/_/g, '/').padEnd(signatureBase64.length + (4 - signatureBase64.length % 4) % 4, '=')),
+    c => c.charCodeAt(0)
+  );
+  
+  const isValid = await crypto.subtle.verify(
+    'HMAC',
+    key,
+    signature,
+    encoder.encode(data)
+  );
+  
+  if (!isValid) {
+    throw new Error('Invalid signature');
+  }
+  
+  // Decode payload
+  const payloadJson = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/').padEnd(payloadBase64.length + (4 - payloadBase64.length % 4) % 4, '='));
+  const payload = JSON.parse(payloadJson);
+  
+  // Check expiration
+  if (payload.exp && Date.now() / 1000 > payload.exp) {
+    throw new Error('Token expired');
+  }
+  
+  return payload as TokenPayload;
+}
+
+export async function generateTokenAsync(payload: TokenPayload): Promise<string> {
   const secret = process.env.JWT_SECRET;
   console.log('JWT_SECRET exists:', !!secret);
   
@@ -38,12 +133,11 @@ export function generateToken(payload: TokenPayload): string {
     throw new Error('JWT_SECRET is not configured');
   }
   
-  const token = jwt.sign(payload, secret, { expiresIn: '24h' });
-  console.log('Token generated successfully for user:', payload.userId);
-  return token;
+  console.log('Using Web Crypto API for token generation');
+  return await createJWT(payload, secret);
 }
 
-export function verifyToken(token: string): TokenPayload {
+export async function verifyTokenAsync(token: string): Promise<TokenPayload> {
   const secret = process.env.JWT_SECRET;
   console.log('Verifying token, JWT_SECRET exists:', !!secret);
   
@@ -51,12 +145,15 @@ export function verifyToken(token: string): TokenPayload {
     throw new Error('JWT_SECRET is not configured');
   }
   
-  try {
-    const decoded = jwt.verify(token, secret) as TokenPayload;
-    console.log('Token verified successfully for user:', decoded.userId);
-    return decoded;
-  } catch (error) {
-    console.error('Token verification failed:', error);
-    throw error;
-  }
+  console.log('Using Web Crypto API for token verification');
+  return await verifyJWT(token, secret);
+}
+
+// Legacy functions that should not be used
+export function generateToken(): string {
+  throw new Error('generateToken is deprecated. Use generateTokenAsync instead.');
+}
+
+export function verifyToken(): TokenPayload {
+  throw new Error('verifyToken is deprecated. Use verifyTokenAsync instead.');
 }

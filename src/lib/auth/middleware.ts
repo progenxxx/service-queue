@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from './utils';
+import { verifyTokenAsync } from './utils';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
@@ -20,7 +20,7 @@ export function requireAuth(handler: (req: AuthenticatedRequest) => Promise<Next
         return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
       }
 
-      const decoded = verifyToken(token);
+      const decoded = await verifyTokenAsync(token);
       
       (req as AuthenticatedRequest).user = {
         id: decoded.userId,
@@ -30,7 +30,7 @@ export function requireAuth(handler: (req: AuthenticatedRequest) => Promise<Next
       };
 
       return handler(req as AuthenticatedRequest);
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
   };
@@ -47,7 +47,7 @@ export function requireRole(roles: string[]) {
           return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
         }
 
-        const decoded = verifyToken(token);
+        const decoded = await verifyTokenAsync(token);
         
         if (!roles.includes(decoded.role)) {
           return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
@@ -68,7 +68,7 @@ export function requireRole(roles: string[]) {
         });
         
         return handler(newRequest);
-      } catch (error) {
+      } catch {
         return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
       }
     };

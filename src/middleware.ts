@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { verifyToken } from '@/lib/auth/utils';
+import { verifyTokenAsync } from '@/lib/auth/utils';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const token = request.cookies.get('auth-token')?.value;
   const pathname = request.nextUrl.pathname;
 
@@ -37,7 +37,7 @@ export function middleware(request: NextRequest) {
   }
   
   try {
-    const decoded = verifyToken(token);
+    const decoded = await verifyTokenAsync(token);
     console.log('Token decoded successfully:', { userId: decoded.userId, role: decoded.role });
     
     const requestHeaders = new Headers(request.headers);
@@ -71,8 +71,8 @@ export function middleware(request: NextRequest) {
     }
     
     return response;
-  } catch (error) {
-    console.log('Token verification failed:', error);
+  } catch {
+    console.log('Token verification failed');
     if (apiRoutes) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }

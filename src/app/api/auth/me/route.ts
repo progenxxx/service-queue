@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/auth/utils';
+import { verifyTokenAsync } from '@/lib/auth/utils-node';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const decoded = verifyToken(token);
+    const decoded = await verifyTokenAsync(token);
     
     const user = await db.query.users.findFirst({
       where: eq(users.id, decoded.userId),
