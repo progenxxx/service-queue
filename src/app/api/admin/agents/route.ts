@@ -14,7 +14,6 @@ const createAgentSchema = z.object({
   assignedCompanyIds: z.array(z.string()).optional().default([]),
 });
 
-// Define the type for company data
 type CompanyData = {
   id: string;
   companyName: string;
@@ -42,7 +41,7 @@ export const GET = requireRole(['super_admin'])(
 
       const agentsWithCompanies = await Promise.all(
         agentsWithDetails.map(async (agent) => {
-          let assignedCompanies: CompanyData[] = []; // Explicitly type the variable
+          let assignedCompanies: CompanyData[] = [];
           
           if (agent.assignedCompanyIds && agent.assignedCompanyIds.length > 0) {
             assignedCompanies = await db.query.companies.findMany({
@@ -117,7 +116,6 @@ export const POST = requireRole(['super_admin'])(
           companyName: 'Service Queue Platform',
         });
       } catch (emailError) {
-        console.error('Failed to send welcome email:', emailError);
       }
 
       return NextResponse.json({ 

@@ -55,7 +55,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         setUser(userData.user);
       }
     } catch (error) {
-      console.error('Failed to fetch user data:', error);
+      //
     }
   };
 
@@ -64,13 +64,12 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
       await fetch('/api/auth/logout', { method: 'POST' });
       router.push('/login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      //
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile sidebar */}
       <div className={`fixed inset-0 flex z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50" onClick={() => setSidebarOpen(false)} />
         <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
@@ -88,16 +87,13 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         <div className="flex-shrink-0 w-14" />
       </div>
 
-      {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64 bg-white border-r border-gray-200 h-screen fixed">
           <SidebarContent navigation={navigation} imageError={imageError} setImageError={setImageError} />
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex flex-col flex-1 lg:pl-64">
-        {/* Top header */}
         <div className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 lg:px-8 sticky top-0 z-30">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -112,17 +108,12 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
             </div>
 
             <div className="flex items-center space-x-4">
-              {/* Notifications */}
               <div className="relative">
                 <Button variant="ghost" size="sm" className="p-2">
                   <Bell className="h-5 w-5 text-gray-500" />
                 </Button>
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                  3
-                </span>
               </div>
 
-              {/* User dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -160,7 +151,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
           </div>
         </div>
 
-        {/* Dropdown overlay */}
         {dropdownOpen && (
           <div
             className="fixed inset-0 z-40"
@@ -168,7 +158,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
           />
         )}
 
-        {/* Main content area */}
         <main className="flex-1 p-6">
           {children}
         </main>
@@ -184,8 +173,7 @@ function SidebarContent({ navigation, imageError, setImageError }: {
 }) {
   return (
     <div className="flex flex-col h-full">
-      {/* Logo section */}
-      <div className="bg-[#f3f4f6] text-white px-4 py-8 border-b border-gray-300">
+      <div className="px-4 py-6 border-b border-gray-200">
         <div className="flex justify-center">
           {!imageError ? (
             <img
@@ -197,15 +185,14 @@ function SidebarContent({ navigation, imageError, setImageError }: {
               onError={() => setImageError(true)}
             />
           ) : (
-            <div className="w-[120px] h-[60px] bg-white rounded flex items-center justify-center">
+            <div className="w-[120px] h-[60px] bg-gray-100 rounded flex items-center justify-center">
               <span className="text-[#087055] text-xs font-bold">CIC</span>
             </div>
           )}
         </div>
       </div>
       
-      {/* Navigation */}
-      <nav className="flex-1 bg-gray-100 mt-4">
+      <nav className="flex-1 bg-gray-50">
         {navigation.map((item) => (
           <a
             key={item.name}
@@ -213,8 +200,8 @@ function SidebarContent({ navigation, imageError, setImageError }: {
             className={`${
               item.current
                 ? 'bg-white text-gray-900 border-r-4 border-[#087055]'
-                : 'text-gray-700 hover:bg-gray-200'
-            } block px-6 py-3 text-sm font-medium transition-colors duration-200 border-b border-gray-300`}
+                : 'text-gray-700 hover:bg-gray-100'
+            } block px-8 py-8 text-sm font-medium transition-colors duration-200 border-b border-gray-200`}
           >
             {item.name}
           </a>

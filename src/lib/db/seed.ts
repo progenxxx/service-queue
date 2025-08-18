@@ -20,7 +20,6 @@ async function seed() {
       phone: '555-0123',
     }).returning();
 
-    // Super Admin
     const adminPassword = 'Admin123!';
     const hashedAdminPassword = await hashPassword(adminPassword);
 
@@ -34,7 +33,6 @@ async function seed() {
       isActive: true,
     }).returning();
 
-    // Agent
     const agentLoginCode = generateLoginCode();
 
     const [agent] = await db.insert(users).values({
@@ -55,7 +53,6 @@ async function seed() {
       },
     ]);
 
-    // Customer Admin - uses email + login code
     const cicAdminLoginCode = generateLoginCode();
 
     const [customerAdmin] = await db.insert(users).values({
@@ -68,7 +65,6 @@ async function seed() {
       isActive: true,
     }).returning();
 
-    // Customer
     const customerLoginCode = generateLoginCode();
 
     const [customer] = await db.insert(users).values({
@@ -113,11 +109,9 @@ async function seed() {
       });
 
     } catch {
-      // Email sending failed, but continue with seeding
     }
 
   } catch {
-    // Seeding failed
     throw new Error('Seeding failed');
   }
 }
