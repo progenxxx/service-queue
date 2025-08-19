@@ -18,7 +18,9 @@ import {
   Users,
   FileText,
   Upload,
-  X
+  X,
+  Send,
+  Loader2
 } from 'lucide-react';
 
 const navigation = [
@@ -46,6 +48,22 @@ interface Company {
   primaryContact: string;
 }
 
+interface RequestLog {
+  id: string;
+  serviceQueueId: string;
+  client: string;
+  serviceRequestNarrative: string;
+  taskStatus: string;
+  createdAt: string;
+  assignedBy: {
+    firstName: string;
+    lastName: string;
+  };
+  company: {
+    companyName: string;
+  };
+}
+
 export default function AdminAllRequestsPage() {
   const [formData, setFormData] = useState({
     serviceQueueId: generateServiceQueueId(),
@@ -66,9 +84,12 @@ export default function AdminAllRequestsPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAddingNote, setIsAddingNote] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [requestLogs, setRequestLogs] = useState<RequestLog[]>([]);
+  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
   // Fetch users and companies data
   useEffect(() => {
@@ -100,6 +121,9 @@ export default function AdminAllRequestsPage() {
             companyId: currentUserData.user.companyId || ''
           }));
         }
+
+        // Fetch existing requests for the log
+        await fetchRequestLogs();
       } catch (error) {
         console.error('Failed to fetch data:', error);
       }
@@ -107,6 +131,19 @@ export default function AdminAllRequestsPage() {
 
     fetchData();
   }, []);
+
+  // Fetch request logs
+  const fetchRequestLogs = async () => {
+    try {
+      const response = await fetch('/api/admin/request');
+      if (response.ok) {
+        const data = await response.json();
+        setRequestLogs(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch request logs:', error);
+    }
+  };
 
   function generateServiceQueueId() {
     const prefix = 'ServQUE';
@@ -124,13 +161,43 @@ export default function AdminAllRequestsPage() {
     setSelectedFiles(files => files.filter((_, i) => i !== index));
   };
 
-  const handleAddNote = () => {
-    setShowNoteDialog(false);
-    setNoteData({
-      noteTitle: '',
-      noteDetails: '',
-      assignedTo: ''
-    });
+  const handleAddNote = async () => {
+    if (!noteData.noteDetails.trim() || !currentRequestId) {
+      alert('Please fill in the note details and create a request first');
+      return;
+    }
+
+    setIsAddingNote(true);
+    try {
+      const response = await fetch('/api/customer/requests/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: currentRequestId,
+          noteContent: noteData.noteDetails,
+          isInternal: false,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setShowNoteDialog(false);
+        setNoteData({
+          noteTitle: '',
+          noteDetails: '',
+          assignedTo: ''
+        });
+        alert('Note added successfully!');
+      } else {
+        alert(`Failed to add note: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error adding note:', error);
+      alert('Error adding note');
+    } finally {
+      setIsAddingNote(false);
+    }
   };
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
@@ -165,6 +232,9 @@ export default function AdminAllRequestsPage() {
       const result = await response.json();
 
       if (response.ok) {
+        const newRequestId = result.request.id;
+        setCurrentRequestId(newRequestId);
+        
         setFormData({
           serviceQueueId: generateServiceQueueId(),
           taskStatus: 'new',
@@ -175,6 +245,10 @@ export default function AdminAllRequestsPage() {
           companyId: currentUser?.companyId || '',
         });
         setSelectedFiles([]);
+        
+        // Refresh request logs to show the new request
+        await fetchRequestLogs();
+        
         alert('Service request created successfully!');
       } else {
         alert(`Failed to create service request: ${result.error}`);
@@ -193,6 +267,31 @@ export default function AdminAllRequestsPage() {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'new':
+        return 'bg-blue-100 text-blue-800';
+      case 'open':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'in_progress':
+        return 'bg-orange-100 text-orange-800';
+      case 'closed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
   };
 
   return (
@@ -315,28 +414,6 @@ export default function AdminAllRequestsPage() {
                       </Select>
                     </div>
 
-                    {/* <div>
-                      <Label htmlFor="assignedById" className="text-sm font-medium text-gray-700 mb-2 block">
-                        The Person Who Assigned (Assigned By)
-                      </Label>
-                      <Select value={formData.assignedById} onValueChange={(value) => setFormData({...formData, assignedById: value})}>
-                        <SelectTrigger className="border-gray-200 bg-white">
-                          <SelectValue placeholder="Select the person who assigned this" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          {users.map((user) => (
-                            <SelectItem 
-                              key={user.id} 
-                              value={user.id}
-                              className="bg-white hover:bg-gray-50"
-                            >
-                              {user.firstName} {user.lastName} ({user.email}) - {user.role}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div> */}
-
                     <div>
                       <Label className="text-sm font-medium text-gray-700 mb-2 block">
                         Attach File
@@ -403,7 +480,14 @@ export default function AdminAllRequestsPage() {
                         className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-2 rounded-md"
                         disabled={isSubmitting}
                       >
-                        {isSubmitting ? 'Creating...' : 'Add Service Queue'}
+                        {isSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          'Add Service Queue'
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -420,6 +504,13 @@ export default function AdminAllRequestsPage() {
                   <DialogTrigger asChild>
                     <Badge 
                       className="bg-teal-100 hover:bg-teal-200 text-teal-700 cursor-pointer px-3 py-1 text-xs font-medium rounded-full"
+                      onClick={() => {
+                        if (!currentRequestId) {
+                          alert('Please create a service request first');
+                          return;
+                        }
+                        setShowNoteDialog(true);
+                      }}
                     >
                       Add Note
                     </Badge>
@@ -457,6 +548,7 @@ export default function AdminAllRequestsPage() {
                           placeholder="Enter Service Objective and Narrative"
                           className="min-h-[120px] border-gray-200"
                           rows={5}
+                          required
                         />
                       </div>
 
@@ -478,8 +570,19 @@ export default function AdminAllRequestsPage() {
                         <Button 
                           onClick={handleAddNote}
                           className="w-full bg-teal-600 hover:bg-teal-700 text-white"
+                          disabled={isAddingNote}
                         >
-                          Save
+                          {isAddingNote ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Adding...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="mr-2 h-4 w-4" />
+                              Save
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -487,9 +590,44 @@ export default function AdminAllRequestsPage() {
                 </Dialog>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-sm">No request logs available</p>
-                </div>
+                {requestLogs.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {requestLogs.slice(0, 10).map((request) => (
+                      <div key={request.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1">
+                            <p className="text-xs font-medium text-teal-600 mb-1">
+                              {request.serviceQueueId}
+                            </p>
+                            <p className="text-sm font-semibold text-gray-900 mb-1">
+                              {request.client}
+                            </p>
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {request.serviceRequestNarrative}
+                            </p>
+                          </div>
+                          <Badge className={`ml-2 text-xs ${getStatusColor(request.taskStatus)}`}>
+                            {request.taskStatus}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-gray-500">
+                          <span>
+                            By: {request.assignedBy.firstName} {request.assignedBy.lastName}
+                          </span>
+                          <span>{formatDate(request.createdAt)}</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          Company: {request.company.companyName}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-400">
+                    <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                    <p className="text-sm">No request logs available</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

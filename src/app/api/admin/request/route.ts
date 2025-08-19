@@ -4,6 +4,7 @@ import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
 import { serviceRequests, companies, users } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
+import { emailService } from '@/lib/email/sendgrid';
 
 // Function to generate Service Queue ID in the format ServQUE-1234567891234
 function generateServiceQueueId(): string {
@@ -161,6 +162,52 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         dueDate,
         taskStatus: 'new',
       }).returning();
+
+      // Get request creator details
+      const requestCreator = await db.query.users.findFirst({
+        where: eq(users.id, finalAssignedById),
+        columns: {
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      });
+
+      // Get company details
+      const companyDetails = await db.query.companies.findFirst({
+        where: eq(companies.id, finalCompanyId),
+        columns: {
+          companyName: true,
+        },
+      });
+
+      // Send notification email to assigned user (if exists)
+      if (assignedToId) {
+        const assignedUser = await db.query.users.findFirst({
+          where: eq(users.id, assignedToId),
+          columns: {
+            email: true,
+          },
+        });
+
+        if (assignedUser?.email) {
+          try {
+            await emailService.sendNewRequest(assignedUser.email, {
+              requestId: newRequest[0].id,
+              serviceQueueId: newRequest[0].serviceQueueId,
+              clientName: client,
+              requestTitle: serviceRequestNarrative,
+              category: serviceQueueCategory,
+              createdBy: requestCreator ? `${requestCreator.firstName} ${requestCreator.lastName}` : 'Unknown',
+              priority: dueDate ? 'High' : 'Normal',
+            });
+            console.log('New request notification email sent successfully');
+          } catch (emailError) {
+            console.error('Failed to send new request notification email:', emailError);
+            // Don't fail the request creation if email fails
+          }
+        }
+      }
 
       // Handle file uploads if any
       const files = formData.getAll('files') as File[];
