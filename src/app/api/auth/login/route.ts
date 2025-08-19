@@ -21,7 +21,10 @@ export async function POST(request: NextRequest) {
 
     let user;
 
-    if (validatedData.loginCode && !validatedData.email) {
+    // Case 1: Only loginCode provided (regular customer login)
+    if (validatedData.loginCode && !validatedData.email && !validatedData.password) {
+      console.log('Login attempt with code only:', validatedData.loginCode);
+      
       user = await db.query.users.findFirst({
         where: and(
           eq(users.loginCode, validatedData.loginCode),
@@ -33,12 +36,17 @@ export async function POST(request: NextRequest) {
       });
 
       if (!user) {
+        console.log('No user found for login code:', validatedData.loginCode);
         return NextResponse.json(
           { error: 'Invalid login code' },
           { status: 401 }
         );
       }
-    } else if (validatedData.email && validatedData.password) {
+    } 
+    // Case 2: Email and password provided (super admin login)
+    else if (validatedData.email && validatedData.password && !validatedData.loginCode) {
+      console.log('Login attempt with email/password:', validatedData.email);
+      
       user = await db.query.users.findFirst({
         where: and(
           eq(users.email, validatedData.email),
@@ -50,6 +58,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!user || !user.passwordHash) {
+        console.log('No user found or no password hash for email:', validatedData.email);
         return NextResponse.json(
           { error: 'Invalid email or password' },
           { status: 401 }
@@ -58,12 +67,17 @@ export async function POST(request: NextRequest) {
 
       const isValidPassword = await verifyPassword(validatedData.password, user.passwordHash);
       if (!isValidPassword) {
+        console.log('Invalid password for email:', validatedData.email);
         return NextResponse.json(
           { error: 'Invalid email or password' },
           { status: 401 }
         );
       }
-    } else if (validatedData.email && validatedData.loginCode) {
+    } 
+    // Case 3: Email and loginCode provided (customer admin login)
+    else if (validatedData.email && validatedData.loginCode && !validatedData.password) {
+      console.log('Login attempt with email/code:', validatedData.email, validatedData.loginCode);
+      
       user = await db.query.users.findFirst({
         where: and(
           eq(users.email, validatedData.email),
@@ -76,6 +90,21 @@ export async function POST(request: NextRequest) {
       });
 
       if (!user) {
+        console.log('No user found for email/code combination:', validatedData.email, validatedData.loginCode);
+        
+        // Debug: Check if user exists with just email
+        const userByEmail = await db.query.users.findFirst({
+          where: eq(users.email, validatedData.email),
+        });
+        
+        // Debug: Check if user exists with just loginCode  
+        const userByCode = await db.query.users.findFirst({
+          where: eq(users.loginCode, validatedData.loginCode),
+        });
+        
+        console.log('User by email exists:', !!userByEmail, userByEmail?.role, userByEmail?.isActive);
+        console.log('User by code exists:', !!userByCode, userByCode?.role, userByCode?.isActive);
+        
         return NextResponse.json(
           { error: 'Invalid email or login code' },
           { status: 401 }
@@ -84,11 +113,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (!user) {
+      console.log('Authentication failed - no valid authentication method');
       return NextResponse.json(
         { error: 'Authentication failed' },
         { status: 401 }
       );
     }
+
+    console.log('User authenticated successfully:', user.email, user.role);
 
     const tokenPayload = {
       userId: user.id,
@@ -124,6 +156,8 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
+    console.error('Login error:', error);
+    
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.issues },

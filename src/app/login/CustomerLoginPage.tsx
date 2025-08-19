@@ -21,13 +21,22 @@ export default function CustomerLoginPage() {
     setError('');
 
     const formData = new FormData(e.currentTarget);
-    const data =
-      loginType === 'customer'
-        ? { loginCode: formData.get('loginCode') }
-        : {
-            email: formData.get('email'),
-            loginCode: formData.get('loginCode'),
-          };
+    
+    let data;
+    if (loginType === 'customer') {
+      // Customer login - only login code
+      data = { 
+        loginCode: formData.get('loginCode') as string
+      };
+    } else {
+      // Admin login - email and login code
+      data = {
+        email: formData.get('email') as string,
+        loginCode: formData.get('loginCode') as string,
+      };
+    }
+
+    console.log('Login attempt:', { loginType, data });
 
     try {
       const response = await fetch('/api/auth/login', {
@@ -38,6 +47,7 @@ export default function CustomerLoginPage() {
       });
 
       const result = await response.json();
+      console.log('Login response:', result);
 
       if (!response.ok) {
         throw new Error(result.error || 'Login failed');
@@ -53,6 +63,7 @@ export default function CustomerLoginPage() {
         window.location.href = '/customer';
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
       setIsLoading(false);
@@ -207,24 +218,6 @@ export default function CustomerLoginPage() {
               </form>
             </div>
           </div>
-
-          {/* <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500 mb-2">Other login options:</p>
-            <div className="flex justify-center space-x-4">
-              <a
-                href="/login/superadmin"
-                className="text-sm text-[#087055] hover:underline"
-              >
-                Super Admin Login
-              </a>
-              <a
-                href="/login/agent"
-                className="text-sm text-[#087055] hover:underline"
-              >
-                Agent Login
-              </a>
-            </div>
-          </div> */}
         </div>
       </div>
     </div>
