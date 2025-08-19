@@ -77,8 +77,8 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent'])(
             clientName: request.client,
             requestTitle: request.serviceRequestNarrative,
           });
-        } catch (emailError) {
-          console.error('Failed to send note notification email:', emailError);
+        } catch {
+          // Email sending failed but note creation succeeded
         }
       }
 

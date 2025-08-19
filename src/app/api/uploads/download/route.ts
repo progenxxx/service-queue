@@ -22,6 +22,7 @@ export const GET = requireRole(['customer', 'customer_admin', 'agent', 'super_ad
       }
 
       const fileBuffer = await readFile(filePath);
+
       const mimeTypes: { [key: string]: string } = {
         '.pdf': 'application/pdf',
         '.doc': 'application/msword',
@@ -40,7 +41,7 @@ export const GET = requireRole(['customer', 'customer_admin', 'agent', 'super_ad
 
       const originalFileName = fileName.substring(fileName.indexOf('-') + 1);
 
-      return new NextResponse(fileBuffer, {
+      return new NextResponse(new Uint8Array(fileBuffer), {
         headers: {
           'Content-Type': mimeType,
           'Content-Disposition': `attachment; filename="${originalFileName}"`,

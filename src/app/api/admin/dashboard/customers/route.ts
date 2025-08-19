@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { companies, serviceRequests, users } from '@/lib/db/schema';
+import { companies, serviceRequests } from '@/lib/db/schema';
 import { sql } from 'drizzle-orm';
 
 export const GET = requireRole(['super_admin'])(
@@ -38,7 +38,7 @@ export const GET = requireRole(['super_admin'])(
         .orderBy(companies.companyName);
 
       return NextResponse.json({ customers });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

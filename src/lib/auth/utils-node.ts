@@ -23,9 +23,9 @@ export function generateServiceQueueId(): string {
 }
 
 export function generateCompanyCode(): string {
-  const prefix = 'CMP';
-  const timestamp = Date.now().toString().slice(-8); // Get last 8 digits for uniqueness
-  const random = randomBytes(3).toString('hex').toUpperCase(); // 6 character random string
+  const prefix = 'CC';
+  const timestamp = Date.now().toString().slice(-6);
+  const random = randomBytes(2).toString('hex').toUpperCase();
   return `${prefix}${timestamp}${random}`;
 }
 

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut, Menu, X, Bell, ChevronDown } from 'lucide-react';
@@ -41,30 +42,51 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    fetchUserData();
-  }, []);
-
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     try {
-      const response = await fetch('/api/auth/me');
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include',
+      });
       if (response.ok) {
         const userData = await response.json();
         setUser(userData.user);
+      } else {
+        router.push('/login');
       }
-    } catch (error) {
-      //
+    } catch {
+      router.push('/login');
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchUserData();
+  }, [fetchUserData]);
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    
+    setIsLoggingOut(true);
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-      router.push('/login');
-    } catch (error) {
-      //
+      const response = await fetch('/api/auth/logout', { 
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        setUser(null);
+        router.push('/login');
+        router.refresh();
+      } else {
+        setIsLoggingOut(false);
+      }
+    } catch {
+      setIsLoggingOut(false);
     }
   };
 
@@ -118,6 +140,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 transition-colors"
+                  disabled={isLoggingOut}
                 >
                   <Avatar className="h-8 w-8">
                     <AvatarFallback className="bg-[#087055] text-white text-sm">
@@ -138,10 +161,11 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
                     <div className="py-1">
                       <button
                         onClick={handleLogout}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        disabled={isLoggingOut}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <LogOut className="h-4 w-4 mr-2" />
-                        Sign Out
+                        {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
                       </button>
                     </div>
                   </div>
@@ -177,13 +201,14 @@ function SidebarContent({ navigation, imageError, setImageError }: {
         <div className="flex justify-center">
           <div className="bg-[#f8f8f8] p-2 rounded-md flex items-center justify-center">
             {!imageError ? (
-              <img
-                src={typeof logoImage === 'string' ? logoImage : logoImage.src}
+              <Image
+                src={logoImage}
                 alt="Community Insurance Center"
                 width={120}
                 height={60}
                 className="h-auto w-auto max-w-[120px]"
                 onError={() => setImageError(true)}
+                priority
               />
             ) : (
               <div className="w-[120px] h-[60px] bg-gray-100 rounded flex items-center justify-center">

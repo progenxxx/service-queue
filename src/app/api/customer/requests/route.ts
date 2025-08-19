@@ -80,7 +80,7 @@ export const POST = requireRole(['customer', 'customer_admin'])(
         client: validatedData.client,
         companyId,
         serviceRequestNarrative: validatedData.serviceRequestNarrative,
-        serviceQueueCategory: validatedData.serviceQueueCategory as any,
+        serviceQueueCategory: validatedData.serviceQueueCategory as 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'other',
         assignedById: userId,
         dueDate: validatedData.dueDate ? new Date(validatedData.dueDate) : undefined,
         taskStatus: 'new',

@@ -1,41 +1,25 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { FileText, Plus, Download } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+  Building2, 
+  UserCheck, 
+  BarChart3,
+  Settings,
+  Users,
+  FileText,
+  Eye,
+  Download
+} from 'lucide-react';
 
-interface RequestNote {
-  id: string;
-  noteContent: string;
-  isInternal: boolean;
-  createdAt: string;
-  author: {
-    firstName: string;
-    lastName: string;
-  };
-}
-
-interface RequestAttachment {
-  id: string;
-  fileName: string;
-  filePath: string;
-  fileSize: number;
-  mimeType: string;
-  createdAt: string;
-  uploadedBy: {
-    firstName: string;
-    lastName: string;
-  };
-}
-
-interface ServiceRequestDetail {
+interface ServiceRequest {
   id: string;
   serviceQueueId: string;
   client: string;
@@ -44,25 +28,54 @@ interface ServiceRequestDetail {
   serviceQueueCategory: string;
   dueDate?: string;
   createdAt: string;
+  updatedAt: string;
+  company: {
+    id: string;
+    companyName: string;
+  };
   assignedTo?: {
+    id: string;
     firstName: string;
     lastName: string;
     email: string;
   };
   assignedBy: {
+    id: string;
     firstName: string;
     lastName: string;
   };
-  company: {
-    companyName: string;
-  };
-  notes: RequestNote[];
-  attachments: RequestAttachment[];
+  notes: Array<{
+    id: string;
+    noteContent: string;
+    isInternal: boolean;
+    createdAt: string;
+    author: {
+      firstName: string;
+      lastName: string;
+    };
+  }>;
+  attachments: Array<{
+    id: string;
+    fileName: string;
+    filePath: string;
+    fileSize: number;
+    mimeType: string;
+    createdAt: string;
+    uploadedBy: {
+      firstName: string;
+      lastName: string;
+    };
+  }>;
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/customer', icon: FileText, current: false },
-  { name: 'All Requests', href: '/customer/requests', icon: FileText, current: false },
+  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
+  { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
+  { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: true },
+  { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
+  { name: 'Summary', href: '/admin/customers', icon: Building2, current: false },
+  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
+  { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
 ];
 
 const categoryOptions = [
@@ -74,66 +87,95 @@ const categoryOptions = [
   { value: 'other', label: 'Other' },
 ];
 
-export default function RequestDetailPage() {
-  const params = useParams();
-  const requestId = params.id as string;
-  
-  const [request, setRequest] = useState<ServiceRequestDetail | null>(null);
+export default function AdminAllRequestsPage() {
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [loading, setLoading] = useState(true);
-  const [showAddNote, setShowAddNote] = useState(false);
-  const [noteContent, setNoteContent] = useState('');
-  const [submittingNote, setSubmittingNote] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
 
-  useEffect(() => {
-    if (requestId) {
-      fetchRequestDetail();
-    }
-  }, [requestId]);
-
-  const fetchRequestDetail = async () => {
+  const fetchAllRequests = useCallback(async () => {
     try {
-      const response = await fetch(`/api/customer/requests/detail?id=${requestId}`);
+      const response = await fetch('/api/admin/requests');
       if (response.ok) {
         const data = await response.json();
-        setRequest(data.request);
+        setRequests(data.requests || []);
+        setFilteredRequests(data.requests || []);
       }
     } catch (error) {
-      console.error('Failed to fetch request detail:', error);
+      console.error('Failed to fetch requests:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const handleAddNote = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSubmittingNote(true);
+  useEffect(() => {
+    fetchAllRequests();
+  }, [fetchAllRequests]);
 
-    try {
-      const response = await fetch('/api/customer/requests/notes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          requestId: requestId,
-          noteContent 
-        }),
-      });
+  useEffect(() => {
+    let filtered = requests;
 
-      if (response.ok) {
-        setShowAddNote(false);
-        setNoteContent('');
-        fetchRequestDetail();
-      }
-    } catch (error) {
-      console.error('Failed to add note:', error);
-    } finally {
-      setSubmittingNote(false);
+    if (searchTerm) {
+      filtered = filtered.filter(request =>
+        request.serviceQueueId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.client.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.company.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        request.serviceRequestNarrative.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(request => request.taskStatus === statusFilter);
+    }
+
+    setFilteredRequests(filtered);
+  }, [searchTerm, statusFilter, requests]);
+
+  const getStatusBadge = (status: string) => {
+    const statusConfig = {
+      new: { label: 'New', className: 'bg-blue-100 text-blue-800' },
+      open: { label: 'Open', className: 'bg-yellow-100 text-yellow-800' },
+      in_progress: { label: 'In Progress', className: 'bg-orange-100 text-orange-800' },
+      closed: { label: 'Closed', className: 'bg-green-100 text-green-800' }
+    };
+    
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.new;
+    return <Badge className={config.className}>{config.label}</Badge>;
   };
 
-  const handleDownloadFile = async (attachment: RequestAttachment) => {
+  const getCategoryLabel = (category: string) => {
+    const option = categoryOptions.find(opt => opt.value === category);
+    return option ? option.label : category;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleViewRequest = (request: ServiceRequest) => {
+    setSelectedRequest(request);
+    setShowRequestModal(true);
+  };
+
+  const handleDownloadFile = async (attachment: ServiceRequest['attachments'][0]) => {
     try {
       const fileName = attachment.filePath.split('/').pop();
-      const response = await fetch(`/api/uploads/download?requestId=${requestId}&fileName=${fileName}`);
+      const response = await fetch(`/api/uploads/download?requestId=${selectedRequest?.id}&fileName=${fileName}`);
       
       if (response.ok) {
         const blob = await response.blob();
@@ -151,29 +193,9 @@ export default function RequestDetailPage() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      new: { label: 'New', className: 'bg-blue-100 text-blue-800' },
-      open: { label: 'Open', className: 'bg-yellow-100 text-yellow-800' },
-      in_progress: { label: 'In Progress', className: 'bg-orange-100 text-orange-800' },
-      closed: { label: 'Closed', className: 'bg-green-100 text-green-800' }
-    };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.new;
-    return <Badge className={config.className}>{config.label}</Badge>;
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   if (loading) {
     return (
-      <DashboardLayout navigation={navigation} title="Request Details">
+      <DashboardLayout navigation={navigation} title="All Requests">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#087055]"></div>
         </div>
@@ -181,175 +203,227 @@ export default function RequestDetailPage() {
     );
   }
 
-  if (!request) {
-    return (
-      <DashboardLayout navigation={navigation} title="Request Details">
-        <div className="text-center py-8">
-          <p className="text-gray-500">Request not found</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   return (
-    <DashboardLayout navigation={navigation} title="Request Details">
+    <DashboardLayout navigation={navigation} title="All Requests">
       <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              Request #{request.serviceQueueId}
-              {getStatusBadge(request.taskStatus)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Client</Label>
-                <p className="text-sm text-gray-900">{request.client}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Category</Label>
-                <p className="text-sm text-gray-900">
-                  {categoryOptions.find(cat => cat.value === request.serviceQueueCategory)?.label || request.serviceQueueCategory}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Assigned To</Label>
-                <p className="text-sm text-gray-900">
-                  {request.assignedTo 
-                    ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}`
-                    : 'Unassigned'
-                  }
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Due Date</Label>
-                <p className="text-sm text-gray-900">
-                  {request.dueDate 
-                    ? new Date(request.dueDate).toLocaleDateString()
-                    : 'No due date set'
-                  }
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Created By</Label>
-                <p className="text-sm text-gray-900">
-                  {`${request.assignedBy.firstName} ${request.assignedBy.lastName}`}
-                </p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-700">Created</Label>
-                <p className="text-sm text-gray-900">
-                  {new Date(request.createdAt).toLocaleDateString()}
-                </p>
-              </div>
-            </div>
-            
-            <div>
-              <Label className="text-sm font-medium text-gray-700">Description</Label>
-              <p className="text-sm text-gray-900 mt-1">{request.serviceRequestNarrative}</p>
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <Input
+            placeholder="Search requests..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="flex-1"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#087055] focus:border-transparent"
+          >
+            <option value="all">All Status</option>
+            <option value="new">New</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+
+        <Card className="shadow-sm border-0">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Request ID</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Client</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Company</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Category</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Status</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned To</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredRequests.length > 0 ? (
+                    filteredRequests.map((request, index) => (
+                      <TableRow 
+                        key={request.id} 
+                        className={`hover:bg-gray-50 border-0 ${
+                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                        }`}
+                      >
+                        <TableCell className="font-medium text-gray-900 py-4 px-6 border-0">
+                          {request.serviceQueueId}
+                        </TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6 border-0">
+                          {request.client}
+                        </TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6 border-0">
+                          {request.company.companyName}
+                        </TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6 border-0">
+                          {getCategoryLabel(request.serviceQueueCategory)}
+                        </TableCell>
+                        <TableCell className="py-4 px-6 border-0">
+                          {getStatusBadge(request.taskStatus)}
+                        </TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6 border-0">
+                          {request.assignedTo 
+                            ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}`
+                            : 'Unassigned'
+                          }
+                        </TableCell>
+                        <TableCell className="text-gray-600 py-4 px-6 border-0">
+                          {formatDate(request.createdAt)}
+                        </TableCell>
+                        <TableCell className="text-center py-4 px-6 border-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-4 py-2 text-xs font-medium rounded"
+                            onClick={() => handleViewRequest(request)}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow className="border-0">
+                      <TableCell colSpan={8} className="text-center py-12 text-gray-500 border-0">
+                        No requests found.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
 
-        {request.attachments.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Attachments ({request.attachments.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {request.attachments.map((attachment) => (
-                  <div key={attachment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium">{attachment.fileName}</p>
-                      <p className="text-sm text-gray-500">
-                        {formatFileSize(attachment.fileSize)} • Uploaded by {attachment.uploadedBy.firstName} {attachment.uploadedBy.lastName}
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleDownloadFile(attachment)}
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
+        {selectedRequest && (
+          <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold text-gray-900">
+                  Request Details - {selectedRequest.serviceQueueId}
+                </DialogTitle>
+              </DialogHeader>
+              
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Request ID</label>
+                    <div className="text-base text-gray-900">{selectedRequest.serviceQueueId}</div>
                   </div>
-                ))}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Client</label>
+                    <div className="text-base text-gray-900">{selectedRequest.client}</div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Company</label>
+                    <div className="text-base text-gray-900">{selectedRequest.company.companyName}</div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Category</label>
+                    <div className="text-base text-gray-900">{getCategoryLabel(selectedRequest.serviceQueueCategory)}</div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Status</label>
+                    <div className="text-sm mt-2">
+                      {getStatusBadge(selectedRequest.taskStatus)}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Assigned To</label>
+                    <div className="text-base text-gray-900">
+                      {selectedRequest.assignedTo 
+                        ? `${selectedRequest.assignedTo.firstName} ${selectedRequest.assignedTo.lastName}`
+                        : 'Unassigned'
+                      }
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Created By</label>
+                    <div className="text-base text-gray-900">
+                      {`${selectedRequest.assignedBy.firstName} ${selectedRequest.assignedBy.lastName}`}
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Created Date</label>
+                    <div className="text-base text-gray-900">{formatDate(selectedRequest.createdAt)}</div>
+                  </div>
+                  {selectedRequest.dueDate && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <label className="text-sm font-medium text-gray-700 block mb-1">Due Date</label>
+                      <div className="text-base text-gray-900">{formatDate(selectedRequest.dueDate)}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <label className="text-sm font-medium text-gray-700 block mb-2">Description</label>
+                  <div className="text-base text-gray-900">{selectedRequest.serviceRequestNarrative}</div>
+                </div>
+
+                {selectedRequest.attachments && selectedRequest.attachments.length > 0 && (
+                  <div className="pt-6 border-t border-gray-200">
+                    <label className="text-lg font-semibold text-gray-900 block mb-4">
+                      Attachments ({selectedRequest.attachments.length})
+                    </label>
+                    <div className="space-y-3">
+                      {selectedRequest.attachments.map((attachment) => (
+                        <div key={attachment.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div>
+                            <div className="text-sm font-medium text-blue-900">{attachment.fileName}</div>
+                            <div className="text-xs text-blue-600">
+                              {formatFileSize(attachment.fileSize)} • Uploaded by {attachment.uploadedBy.firstName} {attachment.uploadedBy.lastName}
+                            </div>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDownloadFile(attachment)}
+                            className="text-blue-600 border-blue-400 hover:bg-blue-500 hover:text-white"
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {selectedRequest.notes && selectedRequest.notes.length > 0 && (
+                  <div className="pt-6 border-t border-gray-200">
+                    <label className="text-lg font-semibold text-gray-900 block mb-4">
+                      Notes ({selectedRequest.notes.length})
+                    </label>
+                    <div className="space-y-4">
+                      {selectedRequest.notes.map((note) => (
+                        <div key={note.id} className="bg-white p-4 rounded-lg border shadow-sm">
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="font-medium text-gray-900">
+                              {note.author.firstName} {note.author.lastName}
+                            </span>
+                            <span className="text-sm text-gray-500">
+                              {new Date(note.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                          <p className="text-gray-700">{note.noteContent}</p>
+                          {note.isInternal && (
+                            <Badge className="mt-2 bg-yellow-100 text-yellow-800">Internal Note</Badge>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </DialogContent>
+          </Dialog>
         )}
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Notes ({request.notes.length})</CardTitle>
-            <Dialog open={showAddNote} onOpenChange={setShowAddNote}>
-              <DialogTrigger asChild>
-                <Button className="bg-[#068d1f] hover:bg-[#087055] text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Note
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Note</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAddNote} className="space-y-4">
-                  <div>
-                    <Label htmlFor="noteContent">Note Content</Label>
-                    <Textarea
-                      id="noteContent"
-                      value={noteContent}
-                      onChange={(e) => setNoteContent(e.target.value)}
-                      rows={4}
-                      required
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setShowAddNote(false)}
-                      disabled={submittingNote}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      className="bg-[#068d1f] hover:bg-[#087055] text-white"
-                      disabled={submittingNote}
-                    >
-                      {submittingNote ? 'Adding...' : 'Add Note'}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </CardHeader>
-          <CardContent>
-            {request.notes.length > 0 ? (
-              <div className="space-y-4">
-                {request.notes.map((note) => (
-                  <div key={note.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">
-                        {note.author.firstName} {note.author.lastName}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {new Date(note.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-gray-700">{note.noteContent}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500 py-8">No notes added yet</p>
-            )}
-          </CardContent>
-        </Card>
       </div>
     </DashboardLayout>
   );

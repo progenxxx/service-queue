@@ -18,7 +18,6 @@ export const POST = requireRole(['super_admin'])(
       const validatedData = resetCodeSchema.parse(body);
       const { customerId } = validatedData;
 
-      // Check if customer exists
       const existingCustomer = await db.query.companies.findFirst({
         where: eq(companies.id, customerId),
       });
@@ -30,13 +29,11 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Generate new unique company code
       let newCompanyCode = generateCompanyCode();
       let codeExists = true;
       let attempts = 0;
       const maxAttempts = 10;
       
-      // Ensure the generated code is unique (with safety limit)
       while (codeExists && attempts < maxAttempts) {
         const existingCode = await db.query.companies.findFirst({
           where: eq(companies.companyCode, newCompanyCode),
@@ -57,10 +54,8 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Store the old code for reference
       const oldCompanyCode = existingCustomer.companyCode;
 
-      // Update the company with the new code
       await db.update(companies)
         .set({
           companyCode: newCompanyCode,
@@ -69,23 +64,16 @@ export const POST = requireRole(['super_admin'])(
         .where(eq(companies.id, customerId))
         .returning();
 
-      // Send the new company code via email (async, don't wait for completion)
-      const sendEmailPromise = emailService.sendCompanyCodeReset(existingCustomer.email, {
-        companyName: existingCustomer.companyName,
-        primaryContact: existingCustomer.primaryContact,
-        oldCompanyCode: oldCompanyCode,
-        newCompanyCode: newCompanyCode,
-      }).catch(emailError => {
-        console.error('Failed to send company code reset email:', emailError);
-        // Email failure doesn't affect the success of code reset
-      });
-
-      // Don't wait for email to complete, but log if it succeeds
-      sendEmailPromise.then(() => {
-        console.log(`Company code reset email sent successfully to ${existingCustomer.email}`);
-      });
-
-      console.log(`Company code reset for ${existingCustomer.companyName}: ${oldCompanyCode} → ${newCompanyCode}`);
+      try {
+        await emailService.sendCompanyCodeReset(existingCustomer.email, {
+          companyName: existingCustomer.companyName,
+          primaryContact: existingCustomer.primaryContact,
+          oldCompanyCode: oldCompanyCode,
+          newCompanyCode: newCompanyCode,
+        });
+      } catch {
+        // Email sending failed but code reset succeeded
+      }
 
       return NextResponse.json({ 
         success: true, 
@@ -101,7 +89,6 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      console.error('Failed to reset company code:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

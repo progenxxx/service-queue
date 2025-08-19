@@ -6,22 +6,22 @@ export const userRoleEnum = pgEnum('user_role', ['customer', 'customer_admin', '
 export const taskStatusEnum = pgEnum('task_status', ['new', 'open', 'in_progress', 'closed']);
 export const serviceQueueCategoryEnum = pgEnum('service_queue_category', [
   'policy_inquiry',
-  'claims_processing', 
+  'claims_processing',
   'account_update',
   'technical_support',
   'billing_inquiry',
-  'other'
+  'other',
 ]);
 
 export const companies = pgTable('companies', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   companyName: text('company_name').notNull(),
-  companyCode: text('company_code').notNull().unique(), // Added company code field
+  companyCode: text('company_code').notNull().unique(),
   primaryContact: text('primary_contact').notNull(),
   phone: text('phone'),
   email: text('email').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdateFn(() => new Date()).notNull(),
 });
 
 export const users = pgTable('users', {
@@ -35,16 +35,16 @@ export const users = pgTable('users', {
   companyId: text('company_id').references(() => companies.id),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdateFn(() => new Date()).notNull(),
 });
 
 export const agents = pgTable('agents', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   userId: text('user_id').references(() => users.id).notNull().unique(),
-  assignedCompanyIds: text('assigned_company_ids').array(),
+  assignedCompanyIds: text('assigned_company_ids').array().$type<string[]>(),
   isActive: boolean('is_active').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdateFn(() => new Date()).notNull(),
 });
 
 export const serviceRequests = pgTable('service_requests', {
@@ -59,7 +59,7 @@ export const serviceRequests = pgTable('service_requests', {
   assignedById: text('assigned_by_id').references(() => users.id).notNull(),
   dueDate: timestamp('due_date'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdateFn(() => new Date()).notNull(),
   modifiedById: text('modified_by_id').references(() => users.id),
 });
 
@@ -83,7 +83,7 @@ export const requestAttachments = pgTable('request_attachments', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Relations remain the same
+/* ---------------- Relations ---------------- */
 export const companiesRelations = relations(companies, ({ many }) => ({
   users: many(users),
   serviceRequests: many(serviceRequests),

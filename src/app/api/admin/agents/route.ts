@@ -68,7 +68,7 @@ export const GET = requireRole(['super_admin'])(
       );
 
       return NextResponse.json({ agents: agentsWithCompanies });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
@@ -115,7 +115,8 @@ export const POST = requireRole(['super_admin'])(
           loginCode,
           companyName: 'Service Queue Platform',
         });
-      } catch (emailError) {
+      } catch {
+        // Email sending failed but agent creation succeeded
       }
 
       return NextResponse.json({ 
