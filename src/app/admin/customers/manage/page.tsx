@@ -45,7 +45,7 @@ const navigation = [
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: true },
   { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: false },
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
-  { name: 'Summary', href: '/admin/customers', icon: Building2, current: false },
+  { name: 'Summary', href: '/admin/summary', icon: Building2, current: false },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
   { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
 ];
@@ -95,7 +95,6 @@ export default function CustomerManagementPage() {
   };
 
   const generateCompanyCode = () => {
-    // Generate 7-character alphanumeric code
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < 7; i++) {
@@ -312,7 +311,6 @@ export default function CustomerManagementPage() {
           </div>
         </div>
 
-        {/* Success Dialog for Generated Code */}
         {generatedCode && (
           <Dialog open={!!generatedCode} onOpenChange={() => setGeneratedCode('')}>
             <DialogContent className="max-w-md">
@@ -356,7 +354,6 @@ export default function CustomerManagementPage() {
           </Dialog>
         )}
 
-        {/* Reset Code Confirmation Dialog */}
         <Dialog open={showResetCodeDialog} onOpenChange={setShowResetCodeDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -517,7 +514,6 @@ export default function CustomerManagementPage() {
           </CardContent>
         </Card>
 
-        {/* Users Modal */}
         <Dialog open={showUsersModal} onOpenChange={setShowUsersModal}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -564,7 +560,6 @@ export default function CustomerManagementPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Details Modal */}
         {selectedCustomer && (
           <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
             <DialogContent className="max-w-lg">
@@ -637,7 +632,6 @@ export default function CustomerManagementPage() {
           </Dialog>
         )}
 
-        {/* Delete Confirmation Dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>

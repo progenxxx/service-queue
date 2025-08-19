@@ -7,12 +7,12 @@ import { z } from 'zod';
 import { emailService } from '@/lib/email/sendgrid';
 
 const createNoteSchema = z.object({
-  requestId: z.string().min(1, 'Request ID is required'),
+  requestId: z.string().min(1, 'Request ID is required').optional(),
   noteContent: z.string().min(1, 'Note content is required'),
   isInternal: z.boolean().optional().default(false),
+  recipientEmail: z.string().email('Valid email address is required').optional(),
 });
 
-// GET endpoint to fetch notes for a request
 export const GET = requireRole(['customer', 'customer_admin', 'agent', 'super_admin'])(
   async (req: NextRequest) => {
     try {
@@ -30,7 +30,6 @@ export const GET = requireRole(['customer', 'customer_admin', 'agent', 'super_ad
         return NextResponse.json({ error: 'User ID required' }, { status: 400 });
       }
 
-      // Verify user has access to this request
       let whereClause;
       if (userRole === 'agent' || userRole === 'super_admin') {
         whereClause = eq(serviceRequests.id, requestId);
@@ -52,7 +51,6 @@ export const GET = requireRole(['customer', 'customer_admin', 'agent', 'super_ad
         return NextResponse.json({ error: 'Request not found' }, { status: 404 });
       }
 
-      // Fetch notes for the request
       const notes = await db.query.requestNotes.findMany({
         where: eq(requestNotes.requestId, requestId),
         with: {
@@ -75,7 +73,6 @@ export const GET = requireRole(['customer', 'customer_admin', 'agent', 'super_ad
   }
 );
 
-// POST endpoint to create a new note
 export const POST = requireRole(['customer', 'customer_admin', 'agent', 'super_admin'])(
   async (req: NextRequest) => {
     try {
@@ -90,7 +87,39 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent', 'super_a
       const body = await req.json();
       const validatedData = createNoteSchema.parse(body);
 
-      // Verify user has access to this request
+      if (validatedData.recipientEmail && !validatedData.requestId) {
+        const noteAuthor = await db.query.users.findFirst({
+          where: eq(users.id, userId),
+          columns: {
+            firstName: true,
+            lastName: true,
+          },
+        });
+
+        try {
+          await emailService.sendNoteAdded(validatedData.recipientEmail, {
+            requestId: 'N/A',
+            serviceQueueId: 'N/A',
+            noteContent: validatedData.noteContent,
+            authorName: noteAuthor ? `${noteAuthor.firstName} ${noteAuthor.lastName}` : 'Unknown',
+            clientName: 'N/A',
+            requestTitle: 'Direct Note',
+          });
+
+          return NextResponse.json({ 
+            success: true, 
+            message: 'Email sent successfully'
+          });
+        } catch (emailError) {
+          console.error('Failed to send note email:', emailError);
+          return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
+        }
+      }
+
+      if (!validatedData.requestId) {
+        return NextResponse.json({ error: 'Request ID is required for note creation' }, { status: 400 });
+      }
+
       let whereClause;
       if (userRole === 'agent' || userRole === 'super_admin') {
         whereClause = eq(serviceRequests.id, validatedData.requestId);
@@ -133,7 +162,6 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent', 'super_a
         return NextResponse.json({ error: 'Request not found' }, { status: 404 });
       }
 
-      // Create the note
       const [newNote] = await db.insert(requestNotes).values({
         requestId: validatedData.requestId,
         authorId: userId,
@@ -141,7 +169,6 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent', 'super_a
         isInternal: validatedData.isInternal,
       }).returning();
 
-      // Get note author details
       const noteAuthor = await db.query.users.findFirst({
         where: eq(users.id, userId),
         columns: {
@@ -151,10 +178,8 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent', 'super_a
         },
       });
 
-      // Send notification emails
       const emailPromises = [];
 
-      // Notify assigned user if they're not the author and if assigned user exists
       if (request.assignedTo && request.assignedTo.email && request.assignedTo.email !== noteAuthor?.email) {
         emailPromises.push(
           emailService.sendNoteAdded(request.assignedTo.email, {
@@ -168,7 +193,6 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent', 'super_a
         );
       }
 
-      // Notify requester if they're not the author and different from assigned user
       if (request.assignedBy && 
           request.assignedBy.email && 
           request.assignedBy.email !== noteAuthor?.email &&
@@ -185,18 +209,14 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent', 'super_a
         );
       }
 
-      // Send all notification emails
       if (emailPromises.length > 0) {
         try {
           await Promise.all(emailPromises);
-          console.log('Note notification emails sent successfully');
         } catch (emailError) {
           console.error('Failed to send note notification emails:', emailError);
-          // Don't fail the note creation if emails fail
         }
       }
 
-      // Return the note with author information
       const noteWithAuthor = {
         ...newNote,
         author: noteAuthor ? {

@@ -28,7 +28,7 @@ const navigation = [
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
   { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: true },
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
-  { name: 'Summary', href: '/admin/customers', icon: Building2, current: false },
+  { name: 'Summary', href: '/admin/summary', icon: Building2, current: false },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
   { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
 ];
@@ -78,7 +78,7 @@ export default function AdminAllRequestsPage() {
   const [noteData, setNoteData] = useState({
     noteTitle: '',
     noteDetails: '',
-    assignedTo: ''
+    emailAddress: ''
   });
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -91,30 +91,25 @@ export default function AdminAllRequestsPage() {
   const [requestLogs, setRequestLogs] = useState<RequestLog[]>([]);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
-  // Fetch users and companies data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch users for "Assigned By" dropdown
         const usersResponse = await fetch('/api/admin/users');
         if (usersResponse.ok) {
           const usersData = await usersResponse.json();
           setUsers(usersData.users || []);
         }
 
-        // Fetch companies for company selection
         const companiesResponse = await fetch('/api/admin/companies');
         if (companiesResponse.ok) {
           const companiesData = await companiesResponse.json();
           setCompanies(companiesData.companies || []);
         }
 
-        // Get current user info
         const currentUserResponse = await fetch('/api/auth/me');
         if (currentUserResponse.ok) {
           const currentUserData = await currentUserResponse.json();
           setCurrentUser(currentUserData.user);
-          // Set default assignedBy to current user
           setFormData(prev => ({
             ...prev,
             assignedById: currentUserData.user.id,
@@ -122,7 +117,6 @@ export default function AdminAllRequestsPage() {
           }));
         }
 
-        // Fetch existing requests for the log
         await fetchRequestLogs();
       } catch (error) {
         console.error('Failed to fetch data:', error);
@@ -132,7 +126,6 @@ export default function AdminAllRequestsPage() {
     fetchData();
   }, []);
 
-  // Fetch request logs
   const fetchRequestLogs = async () => {
     try {
       const response = await fetch('/api/admin/request');
@@ -162,20 +155,20 @@ export default function AdminAllRequestsPage() {
   };
 
   const handleAddNote = async () => {
-    if (!noteData.noteDetails.trim() || !currentRequestId) {
-      alert('Please fill in the note details and create a request first');
+    if (!noteData.noteDetails.trim() || !noteData.emailAddress.trim()) {
+      alert('Please fill in the note details and email address');
       return;
     }
 
     setIsAddingNote(true);
     try {
-      const response = await fetch('/api/customer/requests/notes', {
+      const response = await fetch('/api/admin/customers/requests/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          requestId: currentRequestId,
           noteContent: noteData.noteDetails,
-          isInternal: false,
+          recipientEmail: noteData.emailAddress,
+          requestId: currentRequestId,
         }),
       });
 
@@ -186,9 +179,9 @@ export default function AdminAllRequestsPage() {
         setNoteData({
           noteTitle: '',
           noteDetails: '',
-          assignedTo: ''
+          emailAddress: ''
         });
-        alert('Note added successfully!');
+        alert('Note added and email sent successfully!');
       } else {
         alert(`Failed to add note: ${result.error}`);
       }
@@ -246,7 +239,6 @@ export default function AdminAllRequestsPage() {
         });
         setSelectedFiles([]);
         
-        // Refresh request logs to show the new request
         await fetchRequestLogs();
         
         alert('Service request created successfully!');
@@ -394,7 +386,7 @@ export default function AdminAllRequestsPage() {
 
                     <div>
                       <Label htmlFor="companyId" className="text-sm font-medium text-gray-700 mb-2 block">
-                        The Person Who Assigned (Assigned By)
+                        Company
                       </Label>
                       <Select value={formData.companyId} onValueChange={(value) => setFormData({...formData, companyId: value})}>
                         <SelectTrigger className="border-gray-200 bg-white">
@@ -407,7 +399,7 @@ export default function AdminAllRequestsPage() {
                               value={company.id}
                               className="bg-white hover:bg-gray-50"
                             >
-                              {company.primaryContact}
+                              {company.companyName}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -553,16 +545,17 @@ export default function AdminAllRequestsPage() {
                       </div>
 
                       <div>
-                        <Label htmlFor="assignedToEmail" className="text-sm font-medium text-gray-700 mb-2 block">
-                          Assigned To - Email Address
+                        <Label htmlFor="emailAddress" className="text-sm font-medium text-gray-700 mb-2 block">
+                          Email Address
                         </Label>
                         <Input
-                          id="assignedToEmail"
+                          id="emailAddress"
                           type="email"
-                          value={noteData.assignedTo}
-                          onChange={(e) => setNoteData({...noteData, assignedTo: e.target.value})}
+                          value={noteData.emailAddress}
+                          onChange={(e) => setNoteData({...noteData, emailAddress: e.target.value})}
                           className="border-gray-200"
                           placeholder="Enter email address"
+                          required
                         />
                       </div>
 

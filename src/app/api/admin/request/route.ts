@@ -6,7 +6,6 @@ import { serviceRequests, companies, users } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { emailService } from '@/lib/email/sendgrid';
 
-// Function to generate Service Queue ID in the format ServQUE-1234567891234
 function generateServiceQueueId(): string {
   const prefix = 'ServQUE';
   const timestamp = Date.now().toString();
@@ -78,7 +77,6 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
     try {
       const formData = await request.formData();
       
-      // Extract form fields
       const client = formData.get('client') as string;
       const serviceRequestNarrative = formData.get('serviceRequestNarrative') as string;
       const serviceQueueCategory = formData.get('serviceQueueCategory') as string;
@@ -87,7 +85,6 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       const assignedById = formData.get('assignedById') as string;
       const companyId = formData.get('companyId') as string;
 
-      // Validate required fields
       if (!client || !serviceRequestNarrative || !companyId) {
         return NextResponse.json(
           { error: 'Client, service request narrative, and company are required' },
@@ -95,10 +92,8 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         );
       }
 
-      // Convert due date string to Date object if provided
       const dueDate = dueDateStr ? new Date(dueDateStr) : null;
 
-      // Get current user from headers (set by middleware)
       const currentUserId = request.headers.get('x-user-id');
       const currentUserRole = request.headers.get('x-user-role');
       const currentUserCompanyId = request.headers.get('x-company-id');
@@ -110,47 +105,38 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         );
       }
 
-      // Use the provided assignedById or fall back to current user
       const finalAssignedById = assignedById || currentUserId;
 
-      // For customers, use their company ID, for super_admin allow any company
       let finalCompanyId = companyId;
       if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
         finalCompanyId = currentUserCompanyId;
       }
 
-      // Find the primary contact user by joining companies and users
-      // companies.company_code = users.login_code
       let assignedToId = null;
+      let primaryContactEmail = null;
       
       try {
-        // Get the selected company's company_code
-        const selectedCompany = await db.query.companies.findFirst({
-          where: eq(companies.id, finalCompanyId),
-          columns: {
-            companyCode: true,
-          },
-        });
+        const result = await db
+          .select({
+            userId: users.id,
+            userEmail: users.email,
+            userFirstName: users.firstName,
+            userLastName: users.lastName,
+            companyName: companies.companyName,
+          })
+          .from(companies)
+          .leftJoin(users, eq(companies.companyCode, users.loginCode))
+          .where(eq(companies.id, finalCompanyId))
+          .limit(1);
 
-        if (selectedCompany?.companyCode) {
-          // Find the user with matching login_code
-          const primaryContactUser = await db.query.users.findFirst({
-            where: eq(users.loginCode, selectedCompany.companyCode),
-            columns: {
-              id: true,
-            },
-          });
-
-          if (primaryContactUser) {
-            assignedToId = primaryContactUser.id;
-          }
+        if (result.length > 0 && result[0].userId) {
+          assignedToId = result[0].userId;
+          primaryContactEmail = result[0].userEmail;
         }
       } catch (error) {
         console.error('Error finding primary contact user:', error);
-        // Continue without assignedToId if there's an error
       }
 
-      // Create the service request
       const newRequest = await db.insert(serviceRequests).values({
         serviceQueueId,
         client,
@@ -158,68 +144,38 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         serviceRequestNarrative,
         serviceQueueCategory: serviceQueueCategory as 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'other',
         assignedById: finalAssignedById,
-        assignedToId, // This will be the primary contact user's ID or null
+        assignedToId,
         dueDate,
         taskStatus: 'new',
       }).returning();
 
-      // Get request creator details
-      const requestCreator = await db.query.users.findFirst({
-        where: eq(users.id, finalAssignedById),
-        columns: {
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      });
+      if (primaryContactEmail && assignedToId) {
+        try {
+          const requestCreator = await db.query.users.findFirst({
+            where: eq(users.id, finalAssignedById),
+            columns: {
+              firstName: true,
+              lastName: true,
+            },
+          });
 
-      // Get company details
-      const companyDetails = await db.query.companies.findFirst({
-        where: eq(companies.id, finalCompanyId),
-        columns: {
-          companyName: true,
-        },
-      });
-
-      // Send notification email to assigned user (if exists)
-      if (assignedToId) {
-        const assignedUser = await db.query.users.findFirst({
-          where: eq(users.id, assignedToId),
-          columns: {
-            email: true,
-          },
-        });
-
-        if (assignedUser?.email) {
-          try {
-            await emailService.sendNewRequest(assignedUser.email, {
-              requestId: newRequest[0].id,
-              serviceQueueId: newRequest[0].serviceQueueId,
-              clientName: client,
-              requestTitle: serviceRequestNarrative,
-              category: serviceQueueCategory,
-              createdBy: requestCreator ? `${requestCreator.firstName} ${requestCreator.lastName}` : 'Unknown',
-              priority: dueDate ? 'High' : 'Normal',
-            });
-            console.log('New request notification email sent successfully');
-          } catch (emailError) {
-            console.error('Failed to send new request notification email:', emailError);
-            // Don't fail the request creation if email fails
-          }
+          await emailService.sendNewRequest(primaryContactEmail, {
+            requestId: newRequest[0].id,
+            serviceQueueId: newRequest[0].serviceQueueId,
+            clientName: client,
+            requestTitle: serviceRequestNarrative,
+            category: serviceQueueCategory,
+            createdBy: requestCreator ? `${requestCreator.firstName} ${requestCreator.lastName}` : 'Unknown',
+            priority: dueDate ? 'High' : 'Normal',
+          });
+        } catch (emailError) {
+          console.error('Failed to send new request notification email:', emailError);
         }
       }
 
-      // Handle file uploads if any
       const files = formData.getAll('files') as File[];
       if (files.length > 0) {
-        // Process file uploads here
-        // This would typically involve uploading to cloud storage
-        // and saving file metadata to the database
         console.log(`Processing ${files.length} file uploads...`);
-        
-        // TODO: Implement file upload logic
-        // 1. Upload files to storage (AWS S3, etc.)
-        // 2. Save file metadata to requestAttachments table
       }
 
       return NextResponse.json({ 

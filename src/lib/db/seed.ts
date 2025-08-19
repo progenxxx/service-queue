@@ -8,7 +8,7 @@ async function seed() {
   try {
     const [axsCompany] = await db.insert(companies).values({
       companyName: 'Community Insurance Center',
-      companyCode: 'CIC001', // Added required companyCode field
+      companyCode: 'CIC001', 
       primaryContact: 'Mark Ranny Aglapay',
       email: 'aglapay.markranny@gmail.com',
       phone: '09262214228',
@@ -16,7 +16,7 @@ async function seed() {
 
     const [cicCompany] = await db.insert(companies).values({
       companyName: 'Community Insurance Center v2',
-      companyCode: 'CIC002', // Added required companyCode field
+      companyCode: 'CIC002', 
       primaryContact: 'John Smith',
       email: 'john.smith@communityinscenter.net',
       phone: '555-0123',
@@ -112,7 +112,6 @@ async function seed() {
 
     } catch (emailError) {
       console.error('Failed to send welcome emails:', emailError);
-      // Continue execution even if emails fail
     }
 
   } catch (error) {
