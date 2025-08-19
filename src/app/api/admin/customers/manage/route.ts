@@ -18,6 +18,10 @@ const deleteCustomerSchema = z.object({
   customerId: z.string().min(1, 'Customer ID is required'),
 });
 
+const resetCodeSchema = z.object({
+  customerId: z.string().min(1, 'Customer ID is required'),
+});
+
 export const GET = requireRole(['super_admin'])(
   async () => {
     try {
@@ -49,9 +53,98 @@ export const POST = requireRole(['super_admin'])(
   async (req: NextRequest) => {
     try {
       const body = await req.json();
+      
+      // Check if this is a reset code request
+      if (body.action === 'resetCode') {
+        const validatedData = resetCodeSchema.parse(body);
+        
+        const existingCustomer = await db.query.companies.findFirst({
+          where: eq(companies.id, validatedData.customerId),
+          with: {
+            users: {
+              where: eq(users.role, 'customer_admin'),
+              limit: 1,
+            },
+          },
+        });
+
+        if (!existingCustomer) {
+          return NextResponse.json(
+            { error: 'Customer not found' },
+            { status: 404 }
+          );
+        }
+
+        // Generate new company code
+        let newCompanyCode = generateCompanyCode();
+        let codeExists = true;
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        while (codeExists && attempts < maxAttempts) {
+          const existingCode = await db.query.companies.findFirst({
+            where: eq(companies.companyCode, newCompanyCode),
+          });
+          
+          if (!existingCode) {
+            codeExists = false;
+          } else {
+            newCompanyCode = generateCompanyCode();
+            attempts++;
+          }
+        }
+
+        if (attempts >= maxAttempts) {
+          return NextResponse.json(
+            { error: 'Unable to generate unique company code. Please try again.' },
+            { status: 500 }
+          );
+        }
+
+        // Update company code
+        await db.update(companies)
+          .set({ 
+            companyCode: newCompanyCode,
+            updatedAt: new Date()
+          })
+          .where(eq(companies.id, validatedData.customerId));
+
+        // Update user login code
+        await db.update(users)
+          .set({ 
+            loginCode: newCompanyCode,
+            updatedAt: new Date()
+          })
+          .where(eq(users.companyId, validatedData.customerId));
+
+        // Send email with new code
+        if (existingCustomer.users.length > 0) {
+          const customerAdmin = existingCustomer.users[0];
+          try {
+            await emailService.sendCustomerAdminWelcome(customerAdmin.email, {
+              firstName: customerAdmin.firstName,
+              lastName: customerAdmin.lastName,
+              email: customerAdmin.email,
+              loginCode: newCompanyCode,
+              companyName: existingCustomer.companyName,
+            });
+            console.log(`Reset code email sent successfully to ${customerAdmin.email}`);
+          } catch (emailError) {
+            console.error('Failed to send reset code email:', emailError);
+            // Continue execution even if email fails
+          }
+        }
+
+        return NextResponse.json({
+          success: true,
+          companyCode: newCompanyCode,
+          message: `Login code reset successfully for "${existingCustomer.companyName}". New code: ${newCompanyCode}`
+        });
+      }
+
+      // Regular customer creation
       const validatedData = createCustomerSchema.parse(body);
 
-      // Check if company with this email already exists
       const existingCompany = await db.query.companies.findFirst({
         where: eq(companies.email, validatedData.email),
       });
@@ -63,13 +156,22 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Generate unique company code
+      const existingUser = await db.query.users.findFirst({
+        where: eq(users.email, validatedData.email),
+      });
+
+      if (existingUser) {
+        return NextResponse.json(
+          { error: 'A user with this email already exists' },
+          { status: 400 }
+        );
+      }
+
       let companyCode = generateCompanyCode();
       let codeExists = true;
       let attempts = 0;
       const maxAttempts = 10;
       
-      // Ensure the generated code is unique (with safety limit)
       while (codeExists && attempts < maxAttempts) {
         const existingCode = await db.query.companies.findFirst({
           where: eq(companies.companyCode, companyCode),
@@ -90,7 +192,7 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Create the new company with the generated code
+      // Create company record
       const [newCompany] = await db.insert(companies).values({
         companyName: validatedData.companyName,
         companyCode: companyCode,
@@ -99,22 +201,38 @@ export const POST = requireRole(['super_admin'])(
         email: validatedData.email,
       }).returning();
 
-      // Send the company code via email (async, don't wait for completion)
-      const sendEmailPromise = emailService.sendCompanyCode(validatedData.email, {
+      // Parse primary contact name
+      const nameParts = validatedData.primaryContact.trim().split(/\s+/);
+      const firstName = nameParts[0] || validatedData.primaryContact;
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      // Create customer admin user
+      const [newUser] = await db.insert(users).values({
+        firstName: firstName,
+        lastName: lastName,
+        email: validatedData.email,
+        loginCode: companyCode,
+        role: 'customer_admin',
+        companyId: newCompany.id,
+        isActive: true,
+      }).returning();
+
+      console.log(`Created customer admin user: ${newUser.id} for company: ${newCompany.id}`);
+
+      // Send welcome email (non-blocking)
+      emailService.sendCustomerAdminWelcome(validatedData.email, {
+        firstName: firstName,
+        lastName: lastName,
+        email: validatedData.email,
+        loginCode: companyCode,
         companyName: validatedData.companyName,
-        primaryContact: validatedData.primaryContact,
-        companyCode: companyCode,
+      }).then(() => {
+        console.log(`Customer admin welcome email sent successfully to ${validatedData.email}`);
       }).catch(emailError => {
-        console.error('Failed to send company code email:', emailError);
-        // Email failure doesn't affect the success of company creation
+        console.error('Failed to send customer admin welcome email:', emailError);
       });
 
-      // Don't wait for email to complete, but log if it fails
-      sendEmailPromise.then(() => {
-        console.log(`Company code email sent successfully to ${validatedData.email}`);
-      });
-
-      // Fetch the customer with users for the response
+      // Fetch the complete customer record with users
       const customerWithUsers = await db.query.companies.findFirst({
         where: eq(companies.id, newCompany.id),
         with: {
@@ -135,7 +253,7 @@ export const POST = requireRole(['super_admin'])(
         success: true, 
         customer: customerWithUsers,
         companyCode: companyCode,
-        message: `Company "${validatedData.companyName}" created successfully! Company code ${companyCode} has been sent to ${validatedData.email}.`
+        message: `Company "${validatedData.companyName}" created successfully! Customer admin user created with login code ${companyCode} sent to ${validatedData.email}.`
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -145,7 +263,7 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      console.error('Failed to create customer:', error);
+      console.error('Failed to create customer or reset code:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
@@ -158,7 +276,6 @@ export const DELETE = requireRole(['super_admin'])(
       const validatedData = deleteCustomerSchema.parse(body);
       const customerId = validatedData.customerId;
 
-      // Check if customer exists
       const existingCustomer = await db.query.companies.findFirst({
         where: eq(companies.id, customerId),
       });
@@ -170,7 +287,7 @@ export const DELETE = requireRole(['super_admin'])(
         );
       }
 
-      // Check if customer has active service requests
+      // Check for active service requests
       const hasActiveRequests = await db.query.serviceRequests.findFirst({
         where: eq(serviceRequests.companyId, customerId),
       });
@@ -182,13 +299,13 @@ export const DELETE = requireRole(['super_admin'])(
         );
       }
 
-      // Delete all users associated with the company first
+      // Delete all associated users first (foreign key constraint)
       await db.delete(users).where(eq(users.companyId, customerId));
       
       // Then delete the company
       await db.delete(companies).where(eq(companies.id, customerId));
 
-      console.log(`Customer ${existingCustomer.companyName} (${existingCustomer.companyCode}) deleted successfully`);
+      console.log(`Customer ${existingCustomer.companyName} (${existingCustomer.companyCode}) and all associated users deleted successfully`);
 
       return NextResponse.json({ 
         success: true, 
@@ -223,9 +340,14 @@ export const PUT = requireRole(['super_admin'])(
       const validatedData = updateCustomerSchema.parse(body);
       const { customerId, ...updateData } = validatedData;
 
-      // Check if customer exists
       const existingCustomer = await db.query.companies.findFirst({
         where: eq(companies.id, customerId),
+        with: {
+          users: {
+            where: eq(users.role, 'customer_admin'),
+            limit: 1,
+          },
+        },
       });
 
       if (!existingCustomer) {
@@ -235,7 +357,7 @@ export const PUT = requireRole(['super_admin'])(
         );
       }
 
-      // If email is being updated, check if new email already exists
+      // Check if email is being changed and already exists
       if (updateData.email && updateData.email !== existingCustomer.email) {
         const emailExists = await db.query.companies.findFirst({
           where: eq(companies.email, updateData.email),
@@ -247,9 +369,21 @@ export const PUT = requireRole(['super_admin'])(
             { status: 400 }
           );
         }
+
+        // Also check if email exists in users table
+        const userEmailExists = await db.query.users.findFirst({
+          where: eq(users.email, updateData.email),
+        });
+
+        if (userEmailExists && userEmailExists.companyId !== customerId) {
+          return NextResponse.json(
+            { error: 'A user with this email already exists' },
+            { status: 400 }
+          );
+        }
       }
 
-      // Update the company
+      // Update company record
       const [updatedCompany] = await db.update(companies)
         .set({
           ...updateData,
@@ -258,7 +392,30 @@ export const PUT = requireRole(['super_admin'])(
         .where(eq(companies.id, customerId))
         .returning();
 
-      // Fetch the updated customer with users
+      // Update customer admin user if email or primary contact changed
+      if ((updateData.email || updateData.primaryContact) && existingCustomer.users.length > 0) {
+        const updateUserData: Record<string, string | Date> = {};
+        
+        if (updateData.email) {
+          updateUserData.email = updateData.email;
+        }
+        
+        if (updateData.primaryContact) {
+          const nameParts = updateData.primaryContact.trim().split(/\s+/);
+          updateUserData.firstName = nameParts[0] || updateData.primaryContact;
+          updateUserData.lastName = nameParts.slice(1).join(' ') || '';
+        }
+
+        if (Object.keys(updateUserData).length > 0) {
+          updateUserData.updatedAt = new Date();
+          
+          await db.update(users)
+            .set(updateUserData)
+            .where(eq(users.companyId, customerId));
+        }
+      }
+
+      // Fetch updated customer with users
       const customerWithUsers = await db.query.companies.findFirst({
         where: eq(companies.id, customerId),
         with: {

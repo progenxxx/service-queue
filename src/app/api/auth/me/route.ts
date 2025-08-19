@@ -1,23 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { verifyTokenAsync } from '@/lib/auth/utils-node';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('auth-token')?.value;
+    const userId = request.headers.get('x-user-id');
     
-    if (!token) {
+    if (!userId) {
       return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
     }
 
-    const decoded = await verifyTokenAsync(token);
-    
     const user = await db.query.users.findFirst({
-      where: eq(users.id, decoded.userId),
+      where: eq(users.id, userId),
+      columns: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        role: true,
+        companyId: true,
+        isActive: true,
+      },
       with: {
-        company: true,
+        company: {
+          columns: {
+            id: true,
+            companyName: true,
+          },
+        },
       },
     });
 
@@ -25,18 +37,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({
-      user: {
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-        companyId: user.companyId,
-        company: user.company,
-      },
-    });
-  } catch {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    return NextResponse.json({ user });
+  } catch (error) {
+    console.error('Failed to fetch user:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

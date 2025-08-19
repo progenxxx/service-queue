@@ -69,10 +69,10 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
     if (isLoggingOut) return;
     
     setIsLoggingOut(true);
-    setDropdownOpen(false); // Close dropdown immediately
+    setDropdownOpen(false);
     
     try {
-      const response = await fetch('/api/auth/logout', { 
+      await fetch('/api/auth/logout', { 
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -80,27 +80,21 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         },
       });
 
-      // Always proceed with logout, regardless of response
       setUser(null);
       
-      // Clear any potential cached data
       if (typeof window !== 'undefined') {
-        // Clear any localStorage if present
         try {
           localStorage.clear();
-        } catch (e) {
+        } catch {
           // Ignore localStorage errors
         }
         
-        // Force a full page reload to clear all state and redirect
         window.location.href = '/login';
       } else {
         router.push('/login');
         router.refresh();
       }
-    } catch (error) {
-      console.error('Logout error:', error);
-      // Even if there's an error, still redirect to login
+    } catch {
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       } else {
@@ -109,7 +103,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
     }
   };
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
@@ -129,7 +122,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile sidebar */}
       <div className={`fixed inset-0 flex z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50" onClick={() => setSidebarOpen(false)} />
         <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
@@ -147,16 +139,13 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         <div className="flex-shrink-0 w-14" />
       </div>
 
-      {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64 bg-white border-r border-gray-200 h-screen fixed">
           <SidebarContent navigation={navigation} imageError={imageError} setImageError={setImageError} />
         </div>
       </div>
 
-      {/* Main content */}
       <div className="flex flex-col flex-1 lg:pl-64">
-        {/* Header */}
         <div className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 lg:px-8 sticky top-0 z-30">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -177,7 +166,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
                 </Button>
               </div>
 
-              {/* User dropdown */}
               <div className="relative" data-dropdown>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -217,7 +205,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
           </div>
         </div>
 
-        {/* Main content area */}
         <main className="flex-1 p-6">
           {children}
         </main>

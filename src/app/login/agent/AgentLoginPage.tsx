@@ -107,9 +107,9 @@ export default function AgentLoginPage() {
                     maxLength={7}
                     minLength={7}
                   />
-                  <p className="mt-1 text-xs text-gray-500">
+                  {/* <p className="mt-1 text-xs text-gray-500">
                     Agent login codes are created by super admins
-                  </p>
+                  </p> */}
                 </div>
 
                 {error && (

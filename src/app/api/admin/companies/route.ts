@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
+import { companies } from '@/lib/db/schema';
+import { desc } from 'drizzle-orm';
 
 export const GET = requireRole(['super_admin'])(
   async () => {
@@ -9,8 +11,11 @@ export const GET = requireRole(['super_admin'])(
         columns: {
           id: true,
           companyName: true,
+          primaryContact: true,
+          email: true,
+          phone: true,
         },
-        orderBy: (companies, { asc }) => [asc(companies.companyName)],
+        orderBy: [desc(companies.createdAt)],
       });
 
       return NextResponse.json({ companies: allCompanies });

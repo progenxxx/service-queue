@@ -55,7 +55,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/admin/customers', request.url));
       } else if (role === 'agent') {
         return NextResponse.redirect(new URL('/agent', request.url));
-      } else {
+      } else if (role === 'customer' || role === 'customer_admin') {
         return NextResponse.redirect(new URL('/customer', request.url));
       }
     }
