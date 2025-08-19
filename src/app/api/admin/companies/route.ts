@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { companies } from '@/lib/db/schema';
 
 export const GET = requireRole(['super_admin'])(
   async () => {
@@ -16,6 +15,7 @@ export const GET = requireRole(['super_admin'])(
 
       return NextResponse.json({ companies: allCompanies });
     } catch (error) {
+      console.error('Failed to fetch companies:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

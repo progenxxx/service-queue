@@ -76,7 +76,7 @@ export default function AllCustomersPage() {
         setCustomers(data.customers);
       }
     } catch (error) {
-      
+      console.error('Failed to fetch customers:', error);
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,7 @@ export default function AllCustomersPage() {
         setSelectedCustomerUsers(customerWithUsers || null);
       }
     } catch (error) {
-      
+      console.error('Failed to fetch customer users:', error);
     } finally {
       setLoadingUsers(false);
     }
@@ -166,9 +166,9 @@ export default function AllCustomersPage() {
                         }`}
                       >
                         <TableCell className="py-4 px-6 border-0">
-                          {/* <div className="font-medium text-gray-900">
+                          <div className="font-medium text-gray-900">
                             {customer.companyName}
-                          </div> */}
+                          </div>
                           <div className="text-sm text-gray-600">
                             {customer.primaryContact}
                           </div>

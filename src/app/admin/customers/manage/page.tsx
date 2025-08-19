@@ -14,13 +14,17 @@ import {
   BarChart3,
   Settings,
   Users,
-  Trash2
+  Trash2,
+  RotateCcw,
+  Copy,
+  Check
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface Customer {
   id: string;
   companyName: string;
+  companyCode: string;
   primaryContact: string;
   phone: string;
   email: string;
@@ -53,6 +57,13 @@ export default function CustomerManagementPage() {
   const [showAddCustomer, setShowAddCustomer] = useState(false);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showUsersModal, setShowUsersModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showResetCodeDialog, setShowResetCodeDialog] = useState(false);
+  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
+  const [customerToResetCode, setCustomerToResetCode] = useState<Customer | null>(null);
+  const [generatedCode, setGeneratedCode] = useState<string>('');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isResettingCode, setIsResettingCode] = useState(false);
   const [formData, setFormData] = useState({
     companyName: '',
     primaryContact: '',
@@ -74,10 +85,18 @@ export default function CustomerManagementPage() {
         setCustomers([]);
       }
     } catch (error) {
+      console.error('Failed to fetch customers:', error);
       setCustomers([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateCompanyCode = () => {
+    const prefix = 'CMP';
+    const timestamp = Date.now().toString().slice(-8);
+    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    return `${prefix}${timestamp}${random}`;
   };
 
   const handleAddCustomer = async (e: React.FormEvent) => {
@@ -90,17 +109,16 @@ export default function CustomerManagementPage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        setGeneratedCode(data.companyCode);
         setShowAddCustomer(false);
         setFormData({ companyName: '', primaryContact: '', phone: '', email: '' });
         fetchCustomers();
       }
     } catch (error) {
-      
+      console.error('Failed to add customer:', error);
     }
   };
-
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
 
   const handleDeleteCustomer = async () => {
     if (!customerToDelete) return;
@@ -121,13 +139,58 @@ export default function CustomerManagementPage() {
         alert(errorData.error || 'Failed to delete customer');
       }
     } catch (error) {
+      console.error('Delete error:', error);
       alert('Failed to delete customer');
+    }
+  };
+
+  const handleResetCode = async () => {
+    if (!customerToResetCode) return;
+    
+    setIsResettingCode(true);
+    try {
+      const response = await fetch('/api/admin/customers/reset-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId: customerToResetCode.id }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setGeneratedCode(data.newCompanyCode);
+        fetchCustomers();
+        setShowResetCodeDialog(false);
+        setCustomerToResetCode(null);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to reset company code');
+      }
+    } catch (error) {
+      console.error('Reset code error:', error);
+      alert('Failed to reset company code');
+    } finally {
+      setIsResettingCode(false);
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedCode(text);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy code:', error);
     }
   };
 
   const confirmDelete = (customerId: string) => {
     setCustomerToDelete(customerId);
     setShowDeleteDialog(true);
+  };
+
+  const confirmResetCode = (customer: Customer) => {
+    setCustomerToResetCode(customer);
+    setShowResetCodeDialog(true);
   };
 
   const handleViewDetails = (customer: Customer) => {
@@ -143,7 +206,8 @@ export default function CustomerManagementPage() {
   const filteredCustomers = customers.filter(customer =>
     customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.primaryContact.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    customer.companyCode.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -163,7 +227,7 @@ export default function CustomerManagementPage() {
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Customer Management</h1>
           <div className="flex items-center space-x-4">
             <Input
-              placeholder="Search"
+              placeholder="Search customers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-64"
@@ -174,7 +238,7 @@ export default function CustomerManagementPage() {
                   Add Customer
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-md">
                 <DialogHeader>
                   <DialogTitle>Add New Customer</DialogTitle>
                 </DialogHeader>
@@ -215,6 +279,20 @@ export default function CustomerManagementPage() {
                       required
                     />
                   </div>
+                  
+                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <Label className="text-sm font-medium text-blue-700">Generated Company Code</Label>
+                    </div>
+                    <div className="text-lg font-mono font-bold text-blue-800 bg-white px-3 py-2 rounded border">
+                      {generateCompanyCode()}
+                    </div>
+                    <p className="text-xs text-blue-600 mt-2">
+                      This code will be automatically generated and sent to the customer&apos;s email upon creation.
+                    </p>
+                  </div>
+
                   <div className="flex justify-end space-x-2">
                     <Button type="button" variant="outline" onClick={() => setShowAddCustomer(false)}>
                       Cancel
@@ -229,6 +307,50 @@ export default function CustomerManagementPage() {
           </div>
         </div>
 
+        {/* Success Dialog for Generated Code */}
+        {generatedCode && (
+          <Dialog open={!!generatedCode} onOpenChange={() => setGeneratedCode('')}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-green-700">Customer Created Successfully!</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <Label className="text-sm font-medium text-green-700 block mb-2">
+                    Generated Company Code
+                  </Label>
+                  <div className="flex items-center space-x-2">
+                    <code className="flex-1 bg-white px-3 py-2 rounded border font-mono text-lg font-bold text-green-800">
+                      {generatedCode}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(generatedCode)}
+                      className="flex items-center space-x-1"
+                    >
+                      {copiedCode === generatedCode ? (
+                        <Check className="h-4 w-4 text-green-600" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                      <span>{copiedCode === generatedCode ? 'Copied' : 'Copy'}</span>
+                    </Button>
+                  </div>
+                  <p className="text-xs text-green-600 mt-2">
+                    The company code has been sent to the customer&apos;s email address.
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={() => setGeneratedCode('')} className="bg-[#068d1f] hover:bg-[#087055] text-white">
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
         <Card className="shadow-sm border-0">
           <CardContent className="p-0">
             <div className="overflow-hidden">
@@ -239,6 +361,7 @@ export default function CustomerManagementPage() {
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Primary Contact</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Phone</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Email</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Code</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -263,6 +386,25 @@ export default function CustomerManagementPage() {
                         <TableCell className="text-gray-600 py-4 px-6 border-0">
                           {customer.email}
                         </TableCell>
+                        <TableCell className="py-4 px-6 border-0">
+                          <div className="flex items-center space-x-2">
+                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono font-semibold text-gray-800">
+                              {customer.companyCode}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => copyToClipboard(customer.companyCode)}
+                              className="p-1 h-auto hover:bg-gray-200"
+                            >
+                              {copiedCode === customer.companyCode ? (
+                                <Check className="h-3 w-3 text-green-600" />
+                              ) : (
+                                <Copy className="h-3 w-3 text-gray-500" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
                         <TableCell className="text-center py-4 px-6 border-0">
                           <div className="flex space-x-2 justify-center">
                             <Button
@@ -284,6 +426,15 @@ export default function CustomerManagementPage() {
                             <Button
                               variant="outline"
                               size="sm"
+                              className="text-orange-600 border-orange-400 hover:bg-orange-500 hover:text-white px-3 py-2 rounded flex items-center space-x-1"
+                              onClick={() => confirmResetCode(customer)}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                              <span>Reset</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="text-gray-600 border-gray-400 hover:bg-gray-500 hover:text-white px-3 py-2 rounded"
                               onClick={() => confirmDelete(customer.id)}
                             >
@@ -295,7 +446,7 @@ export default function CustomerManagementPage() {
                     ))
                   ) : (
                     <TableRow className="border-0">
-                      <TableCell colSpan={5} className="text-center py-12 text-gray-500 border-0">
+                      <TableCell colSpan={6} className="text-center py-12 text-gray-500 border-0">
                         No customers found.
                       </TableCell>
                     </TableRow>
@@ -306,6 +457,59 @@ export default function CustomerManagementPage() {
           </CardContent>
         </Card>
 
+        {/* Reset Code Confirmation Dialog */}
+        <Dialog open={showResetCodeDialog} onOpenChange={setShowResetCodeDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-orange-700">Reset Company Code</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <RotateCcw className="h-5 w-5 text-orange-600" />
+                  <Label className="text-sm font-medium text-orange-700">Generate New Code</Label>
+                </div>
+                {customerToResetCode && (
+                  <div>
+                    <p className="text-sm text-orange-700 mb-2">
+                      Company: <strong>{customerToResetCode.companyName}</strong>
+                    </p>
+                    <p className="text-sm text-orange-700 mb-3">
+                      Current Code: <code className="bg-orange-100 px-2 py-1 rounded font-mono">{customerToResetCode.companyCode}</code>
+                    </p>
+                    <div className="text-lg font-mono font-bold text-orange-800 bg-white px-3 py-2 rounded border">
+                      New Code: {generateCompanyCode()}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-gray-600">
+                Are you sure you want to generate a new company code? The new code will be sent to the customer&apos;s email address, and the old code will no longer be valid.
+              </p>
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowResetCodeDialog(false);
+                    setCustomerToResetCode(null);
+                  }}
+                  disabled={isResettingCode}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={handleResetCode}
+                  disabled={isResettingCode}
+                >
+                  {isResettingCode ? 'Generating...' : 'Reset Code'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Existing modals remain the same */}
         <Dialog open={showUsersModal} onOpenChange={setShowUsersModal}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -365,6 +569,12 @@ export default function CustomerManagementPage() {
                   <div>
                     <label className="text-sm font-medium text-gray-700">Company Name</label>
                     <div className="text-sm text-gray-900 mt-1">{selectedCustomer.companyName}</div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Company Code</label>
+                    <div className="text-sm text-gray-900 mt-1">
+                      <code className="bg-gray-100 px-2 py-1 rounded font-mono">{selectedCustomer.companyCode}</code>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Primary Contact</label>

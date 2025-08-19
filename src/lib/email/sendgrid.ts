@@ -375,6 +375,98 @@ export const emailService = {
     });
   },
 
+  async sendCompanyCodeReset(companyEmail: string, resetData: {
+  companyName: string;
+  primaryContact: string;
+  oldCompanyCode: string;
+  newCompanyCode: string;
+}) {
+  const templateId = process.env.SENDGRID_COMPANY_CODE_RESET_TEMPLATE_ID;
+  
+  if (!templateId) {
+    return sendBasicEmail({
+      to: companyEmail,
+      subject: 'Company Code Reset - Service Queue',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f59e0b; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h2 style="margin: 0; font-size: 24px;">Company Code Reset</h2>
+          </div>
+          
+          <div style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+            <h3 style="color: #333; margin-top: 0;">Your Company Code Has Been Reset</h3>
+            
+            <p>Dear ${resetData.primaryContact},</p>
+            
+            <p>The company code for <strong>${resetData.companyName}</strong> has been successfully reset in our Service Queue platform.</p>
+            
+            <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+              <h4 style="color: #f59e0b; margin-top: 0;">Code Reset Details:</h4>
+              <p><strong>Company Name:</strong> ${resetData.companyName}</p>
+              <p><strong>Primary Contact:</strong> ${resetData.primaryContact}</p>
+              
+              <div style="margin: 15px 0;">
+                <p><strong>Previous Code:</strong></p>
+                <span style="font-size: 16px; font-weight: bold; color: #dc3545; background-color: #f8d7da; padding: 8px 16px; border-radius: 4px; font-family: monospace; text-decoration: line-through;">
+                  ${resetData.oldCompanyCode}
+                </span>
+              </div>
+              
+              <div style="margin: 15px 0;">
+                <p><strong>New Company Code:</strong></p>
+                <span style="font-size: 20px; font-weight: bold; color: #f59e0b; background-color: #fef3c7; padding: 8px 16px; border-radius: 4px; font-family: monospace;">
+                  ${resetData.newCompanyCode}
+                </span>
+              </div>
+            </div>
+            
+            <div style="background-color: #fef3c7; padding: 15px; border-radius: 6px; border-left: 4px solid #f59e0b; margin: 20px 0;">
+              <h4 style="color: #92400e; margin-top: 0;">Important Notice:</h4>
+              <ul style="color: #92400e; margin: 0; padding-left: 20px;">
+                <li>Your previous company code (${resetData.oldCompanyCode}) is no longer valid</li>
+                <li>Please update all your records with the new company code</li>
+                <li>Share this new code only with authorized personnel in your organization</li>
+                <li>Keep this code secure and confidential</li>
+              </ul>
+            </div>
+            
+            <div style="margin: 30px 0; text-align: center;">
+              <a href="${process.env.NEXT_PUBLIC_APP_URL}/login" 
+                 style="background-color: #f59e0b; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                Access Service Queue Platform
+              </a>
+            </div>
+            
+            <div style="background-color: #dbeafe; padding: 15px; border-radius: 6px; border-left: 4px solid #3b82f6; margin: 20px 0;">
+              <h4 style="color: #1e40af; margin-top: 0;">Need Help?</h4>
+              <p style="color: #1e40af; margin: 0;">
+                If you did not request this company code reset or have any questions, please contact our support team immediately.
+              </p>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+            
+            <p style="color: #666; font-size: 12px; margin-bottom: 0;">
+              Best regards,<br>
+              <strong>Service Queue Team</strong><br>
+              <em>Keeping your service management secure and efficient</em>
+            </p>
+          </div>
+        </div>
+      `,
+    });
+  }
+
+  return sendEmail({
+    to: companyEmail,
+    templateId,
+    dynamicTemplateData: {
+      ...resetData,
+      loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+    }
+  });
+},
+
   async sendRequestAssigned(userEmail: string, assignmentData: {
     requestId: string;
     serviceQueueId: string;
