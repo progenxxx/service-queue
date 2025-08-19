@@ -1,0 +1,9 @@
+{
+  "build": {
+    "env": {
+      "DATABASE_URL": "@database_url",
+      "SENDGRID_API_KEY": "@sendgrid_api_key",
+      "JWT_SECRET": "@jwt_secret"
+    }
+  }
+}
