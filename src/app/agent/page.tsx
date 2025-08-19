@@ -330,7 +330,6 @@ export default function AgentManagementPage() {
           </div>
         </div>
 
-        {/* Success Dialog for Generated Code */}
         {generatedCode && (
           <Dialog open={!!generatedCode} onOpenChange={() => setGeneratedCode('')}>
             <DialogContent className="max-w-md">
@@ -374,7 +373,6 @@ export default function AgentManagementPage() {
           </Dialog>
         )}
 
-        {/* Reset Code Confirmation Dialog */}
         <Dialog open={showResetCodeDialog} onOpenChange={setShowResetCodeDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>

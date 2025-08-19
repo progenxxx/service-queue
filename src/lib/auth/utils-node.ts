@@ -12,7 +12,6 @@ export interface TokenPayload {
 }
 
 export function generateLoginCode(): string {
-  // Generate 7-character alphanumeric code
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 7; i++) {
@@ -29,7 +28,6 @@ export function generateServiceQueueId(): string {
 }
 
 export function generateCompanyCode(): string {
-  // Generate 7-character alphanumeric code for company
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
   for (let i = 0; i < 7; i++) {

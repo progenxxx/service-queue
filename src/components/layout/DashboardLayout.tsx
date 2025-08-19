@@ -86,7 +86,6 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         try {
           localStorage.clear();
         } catch {
-          // Ignore localStorage errors
         }
         
         window.location.href = '/login';

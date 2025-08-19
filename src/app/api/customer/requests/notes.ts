@@ -78,7 +78,6 @@ export const POST = requireRole(['customer', 'customer_admin', 'agent'])(
             requestTitle: request.serviceRequestNarrative,
           });
         } catch {
-          // Email sending failed but note creation succeeded
         }
       }
 

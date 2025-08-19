@@ -62,7 +62,6 @@ export const GET = requireRole(['super_admin'])(
         .from(companies)
         .orderBy(companies.companyName);
 
-      // Calculate additional metrics for each customer
       const customersWithMetrics = customers.map(customer => {
         const totalTickets = customer.totalTickets;
         const completionRate = totalTickets > 0 
@@ -72,7 +71,6 @@ export const GET = requireRole(['super_admin'])(
         const activeTickets = customer.openTickets + customer.wipTickets;
         const hasRecentActivity = customer.lastRequestDate !== null;
         
-        // Determine customer status based on activity
         let status = 'inactive';
         if (hasRecentActivity) {
           const lastRequest = new Date(customer.lastRequestDate || '');
@@ -103,7 +101,6 @@ export const GET = requireRole(['super_admin'])(
         };
       });
 
-      // Calculate summary statistics
       const summary = {
         totalCustomers: customers.length,
         activeCustomers: customersWithMetrics.filter(c => c.status === 'very_active' || c.status === 'active').length,
@@ -129,11 +126,9 @@ export const GET = requireRole(['super_admin'])(
   }
 );
 
-// Optional: Add a specific customer details endpoint
 export const HEAD = requireRole(['super_admin'])(
   async () => {
     try {
-      // Just return count for quick health check
       const customerCount = await db
         .select({ count: sql<number>`count(*)` })
         .from(companies);

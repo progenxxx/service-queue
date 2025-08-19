@@ -23,7 +23,6 @@ export const POST = requireRole(['super_admin'])(
       const { customerId } = validatedData;
       console.log('Customer ID:', customerId);
 
-      // Find existing customer
       const existingCustomer = await db.query.companies.findFirst({
         where: eq(companies.id, customerId),
         with: {
@@ -43,7 +42,6 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Generate unique company code
       let newCompanyCode = generateCompanyCode();
       let codeExists = true;
       let attempts = 0;
@@ -78,10 +76,8 @@ export const POST = requireRole(['super_admin'])(
       console.log('Old company code:', oldCompanyCode);
       console.log('New company code:', newCompanyCode);
 
-      // Start database transaction
       console.log('Updating companies table...');
       
-      // Update companies table
       const companyUpdateResult = await db.update(companies)
         .set({
           companyCode: newCompanyCode,
@@ -92,14 +88,12 @@ export const POST = requireRole(['super_admin'])(
 
       console.log('Company update result:', companyUpdateResult);
 
-      // Update or create users
       console.log('Checking existing users...');
       console.log('Existing users count:', existingCustomer.users?.length || 0);
 
       if (existingCustomer.users && existingCustomer.users.length > 0) {
         console.log('Updating existing users...');
         
-        // Update existing users' loginCode
         const userUpdateResult = await db.update(users)
           .set({
             loginCode: newCompanyCode,
@@ -112,7 +106,6 @@ export const POST = requireRole(['super_admin'])(
       } else {
         console.log('Creating new user...');
         
-        // Create new user if none exists
         const nameParts = existingCustomer.primaryContact.split(' ');
         const firstName = nameParts[0] || existingCustomer.primaryContact;
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -132,7 +125,6 @@ export const POST = requireRole(['super_admin'])(
         console.log('New user result:', newUserResult);
       }
 
-      // Send email notification
       console.log('Sending email notification...');
       try {
         await emailService.sendCompanyCodeReset(existingCustomer.email, {
@@ -144,7 +136,6 @@ export const POST = requireRole(['super_admin'])(
         console.log('Email sent successfully');
       } catch (emailError) {
         console.error('Failed to send company code reset email:', emailError);
-        // Don't fail the entire operation if email fails
       }
 
       console.log('Reset code operation completed successfully');
@@ -167,7 +158,6 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Log the full error for debugging
       if (error instanceof Error) {
         console.error('Full error details:', {
           message: error.message,

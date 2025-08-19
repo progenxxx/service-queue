@@ -18,7 +18,6 @@ export const POST = requireRole(['super_admin'])(
       const validatedData = resetCodeSchema.parse(body);
       const { agentId } = validatedData;
 
-      // Find the agent with user details
       const existingAgent = await db.query.agents.findFirst({
         where: eq(agents.id, agentId),
         with: {
@@ -33,11 +32,9 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Generate new login code (7 characters)
       const newLoginCode = generateLoginCode();
       const oldLoginCode = existingAgent.user.loginCode;
 
-      // Update the user's login code
       await db.update(users)
         .set({
           loginCode: newLoginCode,
@@ -46,7 +43,6 @@ export const POST = requireRole(['super_admin'])(
         .where(eq(users.id, existingAgent.user.id));
 
       try {
-        // Send email with new login code
         await emailService.sendAgentCodeReset(existingAgent.user.email, {
           firstName: existingAgent.user.firstName,
           lastName: existingAgent.user.lastName,
@@ -55,7 +51,6 @@ export const POST = requireRole(['super_admin'])(
         });
       } catch (emailError) {
         console.error('Failed to send agent code reset email:', emailError);
-        // Email sending failed but code reset succeeded
       }
 
       return NextResponse.json({ 

@@ -42,7 +42,6 @@ export default function SuperAdminLoginPage() {
         throw new Error('Access denied. Super admin credentials required.');
       }
 
-      // full reload to ensure middleware runs
       window.location.href = '/admin';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -58,7 +57,6 @@ export default function SuperAdminLoginPage() {
       </div>
 
       <div className="w-full min-h-[calc(100vh-80px)] flex flex-col items-center justify-start pt-16">
-        {/* Logo Section */}
         <div className="mb-8 flex justify-center">
           <div className="bg-[#f8f8f8] p-2 rounded-md flex items-center justify-center">
             {!imageError ? (
@@ -79,7 +77,6 @@ export default function SuperAdminLoginPage() {
           </div>
         </div>
 
-        {/* Login Form */}
         <div className="w-full max-w-md px-4 py-3">
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
             <div className="p-6 border-b border-gray-100">

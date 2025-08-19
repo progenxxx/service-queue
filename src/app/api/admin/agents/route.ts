@@ -116,7 +116,6 @@ export const POST = requireRole(['super_admin'])(
           companyName: 'Service Queue Platform',
         });
       } catch {
-        // Email sending failed but agent creation succeeded
       }
 
       return NextResponse.json({ 

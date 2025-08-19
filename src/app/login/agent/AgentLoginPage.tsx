@@ -42,7 +42,6 @@ export default function AgentLoginPage() {
         throw new Error('Invalid agent login code');
       }
 
-      // Force a page reload to ensure proper authentication state
       if (typeof window !== 'undefined') {
         window.location.href = '/agent';
       }
@@ -60,7 +59,6 @@ export default function AgentLoginPage() {
       </div>
       
       <div className="w-full min-h-[calc(100vh-80px)] flex flex-col items-center justify-start pt-16">
-        {/* Logo Section */}
         <div className="mb-8">
           <div className="bg-[#f8f8f8] p-3 rounded-md flex items-center justify-center">
             {!imageError ? (
@@ -81,7 +79,6 @@ export default function AgentLoginPage() {
           </div>
         </div>
 
-        {/* Login Box */}
         <div className="w-full max-w-md px-4 py-3">
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
             <div className="p-6 border-b border-gray-100">

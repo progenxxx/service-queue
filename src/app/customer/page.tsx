@@ -12,7 +12,6 @@ export default function CustomerPage() {
 
   return (
     <DashboardLayout navigation={navigation} title="Customer Dashboard">
-      {/* No main content, just empty */}
       <></>
     </DashboardLayout>
   );
