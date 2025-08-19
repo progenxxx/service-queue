@@ -1,5 +1,5 @@
 {
-  "id": "7606a0ab-91cc-44aa-8507-96ddff8661df",
+  "id": "859ec3b2-e7ce-433e-b105-afab0cd24a37",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -94,6 +94,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "company_code": {
+          "name": "company_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
         "primary_contact": {
           "name": "primary_contact",
           "type": "text",
@@ -130,7 +136,15 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "companies_company_code_unique": {
+          "name": "companies_company_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "company_code"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false

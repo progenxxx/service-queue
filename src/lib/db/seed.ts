@@ -7,14 +7,16 @@ import { emailService } from '../email/sendgrid';
 async function seed() {
   try {
     const [axsCompany] = await db.insert(companies).values({
-      companyName: 'AXS Insurance Services',
+      companyName: 'Community Insurance Center',
+      companyCode: 'CIC001', // Added required companyCode field
       primaryContact: 'Mark Ranny Aglapay',
       email: 'aglapay.markranny@gmail.com',
       phone: '09262214228',
     }).returning();
 
     const [cicCompany] = await db.insert(companies).values({
-      companyName: 'Community Insurance Center',
+      companyName: 'Community Insurance Center v2',
+      companyCode: 'CIC002', // Added required companyCode field
       primaryContact: 'John Smith',
       email: 'john.smith@communityinscenter.net',
       phone: '555-0123',
@@ -108,18 +110,25 @@ async function seed() {
         companyName: cicCompany.companyName,
       });
 
-    } catch {
+    } catch (emailError) {
+      console.error('Failed to send welcome emails:', emailError);
+      // Continue execution even if emails fail
     }
 
-  } catch {
+  } catch (error) {
+    console.error('Seeding failed:', error);
     throw new Error('Seeding failed');
   }
 }
 
 if (require.main === module) {
   seed()
-    .then(() => process.exit(0))
-    .catch(() => {
+    .then(() => {
+      console.log('Database seeded successfully');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('Seed script failed:', error);
       process.exit(1);
     });
 }

@@ -22,6 +22,13 @@ export function generateServiceQueueId(): string {
   return `${prefix}${timestamp}${random}`;
 }
 
+export function generateCompanyCode(): string {
+  const prefix = 'CMP';
+  const timestamp = Date.now().toString().slice(-8); // Get last 8 digits for uniqueness
+  const random = randomBytes(3).toString('hex').toUpperCase(); // 6 character random string
+  return `${prefix}${timestamp}${random}`;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
 }

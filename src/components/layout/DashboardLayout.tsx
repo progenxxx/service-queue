@@ -173,22 +173,24 @@ function SidebarContent({ navigation, imageError, setImageError }: {
 }) {
   return (
     <div className="flex flex-col h-full">
-      <div className="px-4 py-6 border-b border-gray-200">
+      <div className="px-4 py-6 bg-[#f8f8f8]">
         <div className="flex justify-center">
-          {!imageError ? (
-            <img
-              src={typeof logoImage === 'string' ? logoImage : logoImage.src}
-              alt="Community Insurance Center"
-              width={120}
-              height={60}
-              className="h-auto w-auto max-w-[120px]"
-              onError={() => setImageError(true)}
-            />
-          ) : (
-            <div className="w-[120px] h-[60px] bg-gray-100 rounded flex items-center justify-center">
-              <span className="text-[#087055] text-xs font-bold">CIC</span>
-            </div>
-          )}
+          <div className="bg-[#f8f8f8] p-2 rounded-md flex items-center justify-center">
+            {!imageError ? (
+              <img
+                src={typeof logoImage === 'string' ? logoImage : logoImage.src}
+                alt="Community Insurance Center"
+                width={120}
+                height={60}
+                className="h-auto w-auto max-w-[120px]"
+                onError={() => setImageError(true)}
+              />
+            ) : (
+              <div className="w-[120px] h-[60px] bg-gray-100 rounded flex items-center justify-center">
+                <span className="text-[#087055] text-xs font-bold">CIC</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       

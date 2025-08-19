@@ -61,6 +61,84 @@ export async function sendBasicEmail({
 }
 
 export const emailService = {
+  async sendCompanyCode(companyEmail: string, companyData: {
+    companyName: string;
+    primaryContact: string;
+    companyCode: string;
+  }) {
+    const templateId = process.env.SENDGRID_COMPANY_CODE_TEMPLATE_ID;
+    
+    if (!templateId) {
+      return sendBasicEmail({
+        to: companyEmail,
+        subject: 'Company Registration Successful - Your Company Code',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background-color: #087055; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+              <h2 style="margin: 0; font-size: 24px;">Welcome to Service Queue</h2>
+            </div>
+            
+            <div style="background-color: #f8f9fa; padding: 30px; border-radius: 0 0 8px 8px; border: 1px solid #e9ecef;">
+              <h3 style="color: #333; margin-top: 0;">Company Registration Successful!</h3>
+              
+              <p>Dear ${companyData.primaryContact},</p>
+              
+              <p>Congratulations! Your company <strong>${companyData.companyName}</strong> has been successfully registered in our Service Queue platform.</p>
+              
+              <div style="background-color: white; padding: 20px; border-radius: 8px; border-left: 4px solid #087055; margin: 20px 0;">
+                <h4 style="color: #087055; margin-top: 0;">Your Company Details:</h4>
+                <p><strong>Company Name:</strong> ${companyData.companyName}</p>
+                <p><strong>Primary Contact:</strong> ${companyData.primaryContact}</p>
+                <p><strong>Company Code:</strong> 
+                  <span style="font-size: 20px; font-weight: bold; color: #087055; background-color: #e8f5e8; padding: 8px 16px; border-radius: 4px; font-family: monospace;">
+                    ${companyData.companyCode}
+                  </span>
+                </p>
+              </div>
+              
+              <div style="background-color: #fff3cd; padding: 15px; border-radius: 6px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                <h4 style="color: #856404; margin-top: 0;">📋 Important Information:</h4>
+                <ul style="color: #856404; margin: 0; padding-left: 20px;">
+                  <li>Please save your company code in a secure location</li>
+                  <li>You will need this code for future reference and communications</li>
+                  <li>Share this code only with authorized personnel in your organization</li>
+                </ul>
+              </div>
+              
+              <div style="margin: 30px 0; text-align: center;">
+                <a href="${process.env.NEXT_PUBLIC_APP_URL}/login" 
+                   style="background-color: #087055; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                  Access Service Queue Platform
+                </a>
+              </div>
+              
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                If you have any questions or need assistance, please don't hesitate to contact our support team.
+              </p>
+              
+              <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+              
+              <p style="color: #666; font-size: 12px; margin-bottom: 0;">
+                Best regards,<br>
+                <strong>Service Queue Team</strong><br>
+                <em>Streamlining your service management experience</em>
+              </p>
+            </div>
+          </div>
+        `,
+      });
+    }
+
+    return sendEmail({
+      to: companyEmail,
+      templateId,
+      dynamicTemplateData: {
+        ...companyData,
+        loginUrl: `${process.env.NEXT_PUBLIC_APP_URL}/login`,
+      }
+    });
+  },
+
   async sendCustomerWelcome(userEmail: string, userData: {
     firstName: string;
     lastName: string;

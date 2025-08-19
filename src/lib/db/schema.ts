@@ -16,6 +16,7 @@ export const serviceQueueCategoryEnum = pgEnum('service_queue_category', [
 export const companies = pgTable('companies', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
   companyName: text('company_name').notNull(),
+  companyCode: text('company_code').notNull().unique(), // Added company code field
   primaryContact: text('primary_contact').notNull(),
   phone: text('phone'),
   email: text('email').notNull(),
@@ -82,6 +83,7 @@ export const requestAttachments = pgTable('request_attachments', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Relations remain the same
 export const companiesRelations = relations(companies, ({ many }) => ({
   users: many(users),
   serviceRequests: many(serviceRequests),

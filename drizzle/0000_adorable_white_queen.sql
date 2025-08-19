@@ -14,11 +14,13 @@ CREATE TABLE "agents" (
 CREATE TABLE "companies" (
 	"id" text PRIMARY KEY NOT NULL,
 	"company_name" text NOT NULL,
+	"company_code" text NOT NULL,
 	"primary_contact" text NOT NULL,
 	"phone" text,
 	"email" text NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "companies_company_code_unique" UNIQUE("company_code")
 );
 --> statement-breakpoint
 CREATE TABLE "request_attachments" (
