@@ -29,6 +29,7 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
+      // Generate new 7-character company code
       let newCompanyCode = generateCompanyCode();
       let codeExists = true;
       let attempts = 0;
@@ -71,7 +72,8 @@ export const POST = requireRole(['super_admin'])(
           oldCompanyCode: oldCompanyCode,
           newCompanyCode: newCompanyCode,
         });
-      } catch {
+      } catch (emailError) {
+        console.error('Failed to send company code reset email:', emailError);
         // Email sending failed but code reset succeeded
       }
 
@@ -89,6 +91,7 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
+      console.error('Failed to reset company code:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

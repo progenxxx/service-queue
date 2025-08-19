@@ -95,10 +95,13 @@ export default function CustomerManagementPage() {
   };
 
   const generateCompanyCode = () => {
-    const prefix = 'CMP';
-    const timestamp = Date.now().toString().slice(-8);
-    const random = Math.random().toString(36).substring(2, 8).toUpperCase();
-    return `${prefix}${timestamp}${random}`;
+    // Generate 7-character alphanumeric code
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 7; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
   };
 
   const handleAddCustomer = async (e: React.FormEvent) => {
@@ -291,7 +294,7 @@ export default function CustomerManagementPage() {
                       {generateCompanyCode()}
                     </div>
                     <p className="text-xs text-blue-600 mt-2">
-                      This code will be automatically generated and sent to the customer&apos;s email upon creation.
+                      This 7-digit code will be automatically generated and sent to the customer&apos;s email upon creation.
                     </p>
                   </div>
 
@@ -352,6 +355,61 @@ export default function CustomerManagementPage() {
             </DialogContent>
           </Dialog>
         )}
+
+        {/* Reset Code Confirmation Dialog */}
+        <Dialog open={showResetCodeDialog} onOpenChange={setShowResetCodeDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-orange-700">Reset Company Code</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <RotateCcw className="h-5 w-5 text-orange-600" />
+                  <Label className="text-sm font-medium text-orange-700">Generate New Code</Label>
+                </div>
+                {customerToResetCode && (
+                  <div>
+                    <p className="text-sm text-orange-700 mb-2">
+                      Company: <strong>{customerToResetCode.companyName}</strong>
+                    </p>
+                    <p className="text-sm text-orange-700 mb-2">
+                      Primary Contact: <strong>{customerToResetCode.primaryContact}</strong>
+                    </p>
+                    <p className="text-sm text-orange-700 mb-3">
+                      Current Code: <code className="bg-orange-100 px-2 py-1 rounded font-mono">{customerToResetCode.companyCode}</code>
+                    </p>
+                    <div className="text-lg font-mono font-bold text-orange-800 bg-white px-3 py-2 rounded border">
+                      New Code: {generateCompanyCode()}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <p className="text-sm text-gray-600">
+                Are you sure you want to generate a new company code for <strong>{customerToResetCode?.primaryContact}</strong>? The new code will be sent to the customer&apos;s email address, and the old code will no longer be valid.
+              </p>
+              <div className="flex justify-end space-x-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowResetCodeDialog(false);
+                    setCustomerToResetCode(null);
+                  }}
+                  disabled={isResettingCode}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  onClick={handleResetCode}
+                  disabled={isResettingCode}
+                >
+                  {isResettingCode ? 'Generating...' : 'Reset Code'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <Card className="shadow-sm border-0">
           <CardContent className="p-0">
@@ -459,59 +517,7 @@ export default function CustomerManagementPage() {
           </CardContent>
         </Card>
 
-        {/* Reset Code Confirmation Dialog */}
-        <Dialog open={showResetCodeDialog} onOpenChange={setShowResetCodeDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-orange-700">Reset Company Code</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <RotateCcw className="h-5 w-5 text-orange-600" />
-                  <Label className="text-sm font-medium text-orange-700">Generate New Code</Label>
-                </div>
-                {customerToResetCode && (
-                  <div>
-                    <p className="text-sm text-orange-700 mb-2">
-                      Company: <strong>{customerToResetCode.companyName}</strong>
-                    </p>
-                    <p className="text-sm text-orange-700 mb-3">
-                      Current Code: <code className="bg-orange-100 px-2 py-1 rounded font-mono">{customerToResetCode.companyCode}</code>
-                    </p>
-                    <div className="text-lg font-mono font-bold text-orange-800 bg-white px-3 py-2 rounded border">
-                      New Code: {generateCompanyCode()}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <p className="text-sm text-gray-600">
-                Are you sure you want to generate a new company code? The new code will be sent to the customer&apos;s email address, and the old code will no longer be valid.
-              </p>
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowResetCodeDialog(false);
-                    setCustomerToResetCode(null);
-                  }}
-                  disabled={isResettingCode}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
-                  onClick={handleResetCode}
-                  disabled={isResettingCode}
-                >
-                  {isResettingCode ? 'Generating...' : 'Reset Code'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Existing modals remain the same */}
+        {/* Users Modal */}
         <Dialog open={showUsersModal} onOpenChange={setShowUsersModal}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
@@ -558,6 +564,7 @@ export default function CustomerManagementPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Details Modal */}
         {selectedCustomer && (
           <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
             <DialogContent className="max-w-lg">
@@ -630,6 +637,7 @@ export default function CustomerManagementPage() {
           </Dialog>
         )}
 
+        {/* Delete Confirmation Dialog */}
         <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
           <DialogContent className="max-w-md">
             <DialogHeader>

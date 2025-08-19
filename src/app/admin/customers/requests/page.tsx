@@ -5,9 +5,12 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Building2, 
   UserCheck, 
@@ -16,7 +19,10 @@ import {
   Users,
   FileText,
   Eye,
-  Download
+  Download,
+  Plus,
+  Upload,
+  X
 } from 'lucide-react';
 
 interface ServiceRequest {
@@ -95,6 +101,15 @@ export default function AdminAllRequestsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showAddRequestModal, setShowAddRequestModal] = useState(false);
+  const [formData, setFormData] = useState({
+    client: '',
+    serviceRequestNarrative: '',
+    serviceQueueCategory: '',
+    dueDate: ''
+  });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchAllRequests = useCallback(async () => {
     try {
@@ -133,6 +148,58 @@ export default function AdminAllRequestsPage() {
 
     setFilteredRequests(filtered);
   }, [searchTerm, statusFilter, requests]);
+
+  const handleAddRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('client', formData.client);
+      formDataToSend.append('serviceRequestNarrative', formData.serviceRequestNarrative);
+      formDataToSend.append('serviceQueueCategory', formData.serviceQueueCategory);
+      if (formData.dueDate) {
+        formDataToSend.append('dueDate', formData.dueDate);
+      }
+
+      selectedFiles.forEach(file => {
+        formDataToSend.append('files', file);
+      });
+
+      const response = await fetch('/api/customer/requests', {
+        method: 'POST',
+        body: formDataToSend,
+      });
+
+      if (response.ok) {
+        setShowAddRequestModal(false);
+        setFormData({
+          client: '',
+          serviceRequestNarrative: '',
+          serviceQueueCategory: '',
+          dueDate: ''
+        });
+        setSelectedFiles([]);
+        fetchAllRequests();
+      } else {
+        console.error('Failed to create request');
+      }
+    } catch (error) {
+      console.error('Error creating request:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setSelectedFiles(Array.from(e.target.files));
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(files => files.filter((_, i) => i !== index));
+  };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
@@ -224,6 +291,135 @@ export default function AdminAllRequestsPage() {
             <option value="in_progress">In Progress</option>
             <option value="closed">Closed</option>
           </select>
+          <Dialog open={showAddRequestModal} onOpenChange={setShowAddRequestModal}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#068d1f] hover:bg-[#087055] text-white px-6 py-2 font-medium">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Request
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold text-gray-900">
+                  Create New Service Request
+                </DialogTitle>
+              </DialogHeader>
+              
+              <form onSubmit={handleAddRequest} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="client">Client Name</Label>
+                    <Input
+                      id="client"
+                      value={formData.client}
+                      onChange={(e) => setFormData({...formData, client: e.target.value})}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="category">Category</Label>
+                    <Select 
+                      value={formData.serviceQueueCategory} 
+                      onValueChange={(value) => setFormData({...formData, serviceQueueCategory: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categoryOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="dueDate">Due Date (Optional)</Label>
+                  <Input
+                    id="dueDate"
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="narrative">Service Request Description</Label>
+                  <Textarea
+                    id="narrative"
+                    value={formData.serviceRequestNarrative}
+                    onChange={(e) => setFormData({...formData, serviceRequestNarrative: e.target.value})}
+                    rows={4}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label>Attachments (Optional)</Label>
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
+                      id="file-upload"
+                      accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      className="flex items-center justify-center w-full px-4 py-2 border-2 border-dashed border-gray-300 rounded-md cursor-pointer hover:border-[#087055] transition-colors"
+                    >
+                      <Upload className="h-5 w-5 mr-2 text-gray-400" />
+                      <span className="text-gray-600">Choose files or drag and drop</span>
+                    </label>
+                  </div>
+
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
+                          <div>
+                            <span className="text-sm font-medium">{file.name}</span>
+                            <span className="text-xs text-gray-500 ml-2">({formatFileSize(file.size)})</span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowAddRequestModal(false)}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-[#068d1f] hover:bg-[#087055] text-white"
+                    disabled={isSubmitting}
+                  >
+                    {isSubmitting ? 'Creating...' : 'Create Request'}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Card className="shadow-sm border-0">
@@ -301,6 +497,7 @@ export default function AdminAllRequestsPage() {
           </CardContent>
         </Card>
 
+        {/* Request Details Modal */}
         {selectedRequest && (
           <Dialog open={showRequestModal} onOpenChange={setShowRequestModal}>
             <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">

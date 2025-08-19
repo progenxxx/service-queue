@@ -12,7 +12,13 @@ export interface TokenPayload {
 }
 
 export function generateLoginCode(): string {
-  return randomBytes(4).toString('hex').toUpperCase();
+  // Generate 7-character alphanumeric code
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 7; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 export function generateServiceQueueId(): string {
@@ -23,10 +29,13 @@ export function generateServiceQueueId(): string {
 }
 
 export function generateCompanyCode(): string {
-  const prefix = 'CC';
-  const timestamp = Date.now().toString().slice(-6);
-  const random = randomBytes(2).toString('hex').toUpperCase();
-  return `${prefix}${timestamp}${random}`;
+  // Generate 7-character alphanumeric code for company
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let result = '';
+  for (let i = 0; i < 7; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
 }
 
 export async function hashPassword(password: string): Promise<string> {

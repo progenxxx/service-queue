@@ -69,6 +69,8 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
     if (isLoggingOut) return;
     
     setIsLoggingOut(true);
+    setDropdownOpen(false); // Close dropdown immediately
+    
     try {
       const response = await fetch('/api/auth/logout', { 
         method: 'POST',
@@ -78,20 +80,56 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         },
       });
 
-      if (response.ok) {
-        setUser(null);
+      // Always proceed with logout, regardless of response
+      setUser(null);
+      
+      // Clear any potential cached data
+      if (typeof window !== 'undefined') {
+        // Clear any localStorage if present
+        try {
+          localStorage.clear();
+        } catch (e) {
+          // Ignore localStorage errors
+        }
+        
+        // Force a full page reload to clear all state and redirect
+        window.location.href = '/login';
+      } else {
         router.push('/login');
         router.refresh();
-      } else {
-        setIsLoggingOut(false);
       }
-    } catch {
-      setIsLoggingOut(false);
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Even if there's an error, still redirect to login
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      } else {
+        router.push('/login');
+      }
     }
   };
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (dropdownOpen && !target.closest('[data-dropdown]')) {
+        setDropdownOpen(false);
+      }
+    };
+
+    if (dropdownOpen) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [dropdownOpen]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile sidebar */}
       <div className={`fixed inset-0 flex z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50" onClick={() => setSidebarOpen(false)} />
         <div className="relative flex-1 flex flex-col max-w-xs w-full bg-white">
@@ -109,13 +147,16 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
         <div className="flex-shrink-0 w-14" />
       </div>
 
+      {/* Desktop sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <div className="flex flex-col w-64 bg-white border-r border-gray-200 h-screen fixed">
           <SidebarContent navigation={navigation} imageError={imageError} setImageError={setImageError} />
         </div>
       </div>
 
+      {/* Main content */}
       <div className="flex flex-col flex-1 lg:pl-64">
+        {/* Header */}
         <div className="bg-white shadow-sm border-b border-gray-200 px-4 sm:px-6 lg:px-8 sticky top-0 z-30">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
@@ -136,7 +177,8 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
                 </Button>
               </div>
 
-              <div className="relative">
+              {/* User dropdown */}
+              <div className="relative" data-dropdown>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 transition-colors"
@@ -162,7 +204,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
                       <button
                         onClick={handleLogout}
                         disabled={isLoggingOut}
-                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         <LogOut className="h-4 w-4 mr-2" />
                         {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
@@ -175,13 +217,7 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
           </div>
         </div>
 
-        {dropdownOpen && (
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setDropdownOpen(false)}
-          />
-        )}
-
+        {/* Main content area */}
         <main className="flex-1 p-6">
           {children}
         </main>

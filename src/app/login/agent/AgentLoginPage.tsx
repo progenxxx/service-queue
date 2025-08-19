@@ -29,6 +29,7 @@ export default function AgentLoginPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
+        credentials: 'include',
       });
 
       const result = await response.json();
@@ -41,7 +42,10 @@ export default function AgentLoginPage() {
         throw new Error('Invalid agent login code');
       }
 
-      window.location.href = '/agent';
+      // Force a page reload to ensure proper authentication state
+      if (typeof window !== 'undefined') {
+        window.location.href = '/agent';
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
@@ -96,11 +100,16 @@ export default function AgentLoginPage() {
                     id="loginCode"
                     name="loginCode"
                     type="text"
-                    placeholder="Enter your login code"
+                    placeholder="Enter your 7-digit login code"
                     required
                     disabled={isLoading}
                     className="w-full h-12 px-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#087055] focus:border-[#087055]"
+                    maxLength={7}
+                    minLength={7}
                   />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Agent login codes are created by super admins
+                  </p>
                 </div>
 
                 {error && (
