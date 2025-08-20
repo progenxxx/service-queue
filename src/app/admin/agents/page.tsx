@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { 
   Building2, 
   UserCheck, 
@@ -16,11 +15,11 @@ import {
   Settings,
   Users,
   Plus,
-  Eye,
-  EyeOff,
-  Trash2
+  Trash2,
+  RotateCcw,
+  Copy,
+  Check
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface Agent {
   id: string;
@@ -42,6 +41,20 @@ interface Company {
   companyName: string;
 }
 
+interface RecentActivity {
+  id: string;
+  type: string;
+  description: string;
+  timestamp: string;
+  user: {
+    firstName: string;
+    lastName: string;
+  };
+  company?: {
+    companyName: string;
+  };
+}
+
 const navigation = [
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
@@ -55,11 +68,15 @@ const navigation = [
 export default function AgentManagementPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showAddAgent, setShowAddAgent] = useState(false);
-  const [showAssignedTo, setShowAssignedTo] = useState<string | null>(null);
+  const [showDetailsForm, setShowDetailsForm] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [isTableTransitioning, setIsTableTransitioning] = useState(false);
+  
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -67,9 +84,18 @@ export default function AgentManagementPage() {
     assignedCompanyIds: [] as string[]
   });
 
+  const [editableDetails, setEditableDetails] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    loginCode: '',
+    assignedCompanyIds: [] as string[]
+  });
+
   useEffect(() => {
     fetchAgents();
     fetchCompanies();
+    fetchRecentActivity();
   }, []);
 
   const fetchAgents = async () => {
@@ -98,6 +124,27 @@ export default function AgentManagementPage() {
     }
   };
 
+  const fetchRecentActivity = async () => {
+    try {
+      const response = await fetch('/api/admin/dashboard/activity');
+      if (response.ok) {
+        const data = await response.json();
+        setRecentActivity(data.activities || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch recent activity:', error);
+    }
+  };
+
+  const generateAgentCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 7; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  };
+
   const handleAddAgent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -111,14 +158,87 @@ export default function AgentManagementPage() {
         setShowAddAgent(false);
         setFormData({ firstName: '', lastName: '', email: '', assignedCompanyIds: [] });
         fetchAgents();
+        alert('Agent created successfully!');
       }
     } catch (error) {
       console.error('Failed to add agent:', error);
     }
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedCode(text);
+      setTimeout(() => setCopiedCode(null), 2000);
+    } catch (error) {
+      console.error('Failed to copy code:', error);
+    }
+  };
+
   const handleViewDetails = (agent: Agent) => {
-    setSelectedAgent(agent);
+    setIsTableTransitioning(true);
+    
+    setTimeout(() => {
+      setSelectedAgent(agent);
+      setEditableDetails({
+        firstName: agent.firstName,
+        lastName: agent.lastName,
+        email: agent.email,
+        loginCode: agent.loginCode,
+        assignedCompanyIds: agent.assignedCompanyIds || []
+      });
+      setShowDetailsForm(true);
+      setIsTableTransitioning(false);
+    }, 300);
+  };
+
+  const handleBackFromDetails = () => {
+    setIsTableTransitioning(true);
+    
+    setTimeout(() => {
+      setShowDetailsForm(false);
+      setSelectedAgent(null);
+      setIsTableTransitioning(false);
+    }, 300);
+  };
+
+  const handleBackToAgents = () => {
+    setIsTableTransitioning(true);
+    
+    setTimeout(() => {
+      setShowAddAgent(false);
+      setFormData({ firstName: '', lastName: '', email: '', assignedCompanyIds: [] });
+      setIsTableTransitioning(false);
+    }, 300);
+  };
+
+  const handleSaveDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedAgent) return;
+
+    try {
+      // Here you would typically call an API to update the agent details
+      // For now, we'll just simulate success
+      alert('Agent details updated successfully');
+      handleBackFromDetails();
+    } catch (error) {
+      console.error('Failed to save agent details:', error);
+      alert('Failed to save agent details');
+    }
+  };
+
+  const handleDeleteAgent = async (agentId: string) => {
+    if (confirm('Are you sure you want to delete this agent?')) {
+      try {
+        // Here you would call the delete API
+        console.log('Delete agent:', agentId);
+        alert('Agent deleted successfully');
+        fetchAgents();
+      } catch (error) {
+        console.error('Failed to delete agent:', error);
+        alert('Failed to delete agent');
+      }
+    }
   };
 
   const filteredAgents = agents.filter(agent =>
@@ -141,58 +261,336 @@ export default function AgentManagementPage() {
     <DashboardLayout navigation={navigation} title="">
       <div className="space-y-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Agent Management</h1>
-          <div className="flex justify-between items-center">
-            <Input
-              placeholder="Search agents..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-80"
-            />
-            <Dialog open={showAddAgent} onOpenChange={setShowAddAgent}>
-              <DialogTrigger asChild>
-                <Button className="bg-[#068d1f] hover:bg-[#087055] text-white px-6 py-2 font-medium">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Agent
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-semibold">Add New Agent</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleAddAgent} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        value={formData.firstName}
-                        onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        value={formData.lastName}
-                        onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                        required
-                      />
-                    </div>
+          <div className="flex items-center space-x-4 mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">
+              {showDetailsForm ? 'Agent Details' : 'Agents'}
+            </h1>
+          </div>
+          
+          {!showDetailsForm && !showAddAgent && (
+            <div className="flex items-center space-x-4">
+              <Input
+                placeholder="Search agents..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-80"
+              />
+              <Button 
+                className="bg-[#068d1f] hover:bg-[#087055] text-white px-6 py-2 font-medium"
+                onClick={() => setShowAddAgent(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add User
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Show forms and other content only when NOT in Add Agent mode */}
+        {!showAddAgent && (
+          <div className={`transition-all duration-300 ease-in-out ${
+            isTableTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'
+          }`}>
+            {showDetailsForm ? (
+              <div className="w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Agent Details Card */}
+                  <Card className="shadow-sm border-0">
+                    <CardContent className="p-8">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">Agent Details</h3>
+                      <form onSubmit={handleSaveDetails} className="space-y-6">
+                        <div>
+                          <Label htmlFor="detailsFirstName" className="text-sm font-medium text-gray-700 mb-2 block">
+                            First Name
+                          </Label>
+                          <Input
+                            id="detailsFirstName"
+                            value={editableDetails.firstName}
+                            onChange={(e) => setEditableDetails({...editableDetails, firstName: e.target.value})}
+                            className="h-12"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="detailsLastName" className="text-sm font-medium text-gray-700 mb-2 block">
+                            Last Name
+                          </Label>
+                          <Input
+                            id="detailsLastName"
+                            value={editableDetails.lastName}
+                            onChange={(e) => setEditableDetails({...editableDetails, lastName: e.target.value})}
+                            className="h-12"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="detailsEmail" className="text-sm font-medium text-gray-700 mb-2 block">
+                            Email
+                          </Label>
+                          <Input
+                            id="detailsEmail"
+                            type="email"
+                            value={editableDetails.email}
+                            onChange={(e) => setEditableDetails({...editableDetails, email: e.target.value})}
+                            className="h-12"
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="detailsAssignedCompanies" className="text-sm font-medium text-gray-700 mb-2 block">
+                            Assign Customer
+                          </Label>
+                          <Select
+                            onValueChange={(value) => {
+                              if (!editableDetails.assignedCompanyIds.includes(value)) {
+                                setEditableDetails({
+                                  ...editableDetails,
+                                  assignedCompanyIds: [...editableDetails.assignedCompanyIds, value]
+                                });
+                              }
+                            }}
+                          >
+                            <SelectTrigger className="h-12 bg-white border-gray-300">
+                              <SelectValue placeholder="Company Name" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-white border border-gray-200">
+                              {companies.map((company) => (
+                                <SelectItem key={company.id} value={company.id} className="bg-white hover:bg-gray-50">
+                                  {company.companyName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {editableDetails.assignedCompanyIds.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {editableDetails.assignedCompanyIds.map((companyId) => {
+                                const company = companies.find(c => c.id === companyId);
+                                return (
+                                  <div key={companyId} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border">
+                                    <span className="text-sm font-medium">{company?.companyName}</span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                      onClick={() => setEditableDetails({
+                                        ...editableDetails,
+                                        assignedCompanyIds: editableDetails.assignedCompanyIds.filter(id => id !== companyId)
+                                      })}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="detailsLoginCode" className="text-sm font-medium text-gray-700 mb-2 block">
+                            Login Code
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="detailsLoginCode"
+                              value={editableDetails.loginCode}
+                              onChange={(e) => setEditableDetails({...editableDetails, loginCode: e.target.value})}
+                              className="h-12 pr-12"
+                              maxLength={7}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditableDetails({...editableDetails, loginCode: generateAgentCode()})}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              <RotateCcw className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4">
+                          <Button 
+                            type="submit"
+                            className="bg-[#068d1f] hover:bg-[#087055] text-white px-8 py-3"
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Recent Activity Card */}
+                  <Card className="shadow-sm border-0">
+                    <CardContent className="p-8">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h3>
+                      <div className="space-y-4">
+                        {recentActivity.length > 0 ? (
+                          recentActivity.slice(0, 5).map((activity) => (
+                            <div key={activity.id} className="flex items-start space-x-3">
+                              <div className="flex-shrink-0">
+                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                                  <span className="text-white text-sm font-medium">
+                                    {activity.user.firstName.charAt(0)}{activity.user.lastName.charAt(0)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <span className="font-medium text-gray-900">
+                                    {activity.user.firstName} {activity.user.lastName}
+                                  </span>
+                                  <span className="text-sm text-gray-500">{activity.timestamp}</span>
+                                </div>
+                                <p className="text-sm text-gray-600">{activity.description}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500">No recent activity</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              <Card className="shadow-sm border-0">
+                <CardContent className="p-0">
+                  <div className="overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">First Name</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Last Name</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned To</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Email</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAgents.length > 0 ? (
+                          filteredAgents.map((agent, index) => (
+                            <TableRow 
+                              key={agent.id} 
+                              className={`hover:bg-gray-50 border-0 ${
+                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                              }`}
+                            >
+                              <TableCell className="py-4 px-6 border-0">
+                                <div className="font-medium text-gray-900">
+                                  {agent.firstName}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-4 px-6 border-0">
+                                <div className="font-medium text-gray-900">
+                                  {agent.lastName}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-4 px-6 border-0">
+                                <div className="text-gray-600">
+                                  Company Name
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-gray-600 py-4 px-6 border-0">
+                                {agent.email}
+                              </TableCell>
+                              <TableCell className="text-center py-4 px-6 border-0">
+                                <div className="flex space-x-2 justify-center">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-3 py-2 text-xs font-medium rounded"
+                                    onClick={() => handleViewDetails(agent)}
+                                  >
+                                    View Details
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-400 hover:bg-red-500 hover:text-white px-3 py-2 rounded"
+                                    onClick={() => handleDeleteAgent(agent.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow className="border-0">
+                            <TableCell colSpan={5} className="text-center py-12 text-gray-500 border-0">
+                              No agents found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        )}
+
+        {/* Add Agent Form - Only show this when showAddAgent is true */}
+        {showAddAgent && (
+          <div className="w-full max-w-2xl">
+            <Card className="shadow-sm border-0">
+              <CardContent className="p-8">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Agent User</h2>
+                </div>
+                
+                <form onSubmit={handleAddAgent} className="space-y-6">
                   <div>
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="firstName" className="text-sm font-medium text-gray-700 mb-2 block">
+                      First Name
+                    </Label>
+                    <Input
+                      id="firstName"
+                      placeholder="First Name"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="lastName" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Last Name
+                    </Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Last Name"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Email
+                    </Label>
                     <Input
                       id="email"
                       type="email"
+                      placeholder="test@gmail.com"
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                       required
+                      className="h-12"
                     />
                   </div>
+
                   <div>
-                    <Label htmlFor="assignedCompanies">Assigned Companies</Label>
+                    <Label htmlFor="assignedCompanies" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Assign Customer
+                    </Label>
                     <Select
                       onValueChange={(value) => {
                         if (!formData.assignedCompanyIds.includes(value)) {
@@ -203,12 +601,12 @@ export default function AgentManagementPage() {
                         }
                       }}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select companies to assign" />
+                      <SelectTrigger className="h-12 bg-white border-gray-300">
+                        <SelectValue placeholder="Company Name" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border border-gray-200">
                         {companies.map((company) => (
-                          <SelectItem key={company.id} value={company.id}>
+                          <SelectItem key={company.id} value={company.id} className="bg-white hover:bg-gray-50">
                             {company.companyName}
                           </SelectItem>
                         ))}
@@ -239,192 +637,48 @@ export default function AgentManagementPage() {
                       </div>
                     )}
                   </div>
-                  <div className="flex justify-end space-x-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setShowAddAgent(false)}>
-                      Cancel
+
+                  <div>
+                    <Label htmlFor="loginCode" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Login Code
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="loginCode"
+                        value={generateAgentCode()}
+                        readOnly
+                        className="h-12 pr-12 bg-gray-50"
+                        maxLength={7}
+                      />
+                      <button
+                        type="button"
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <RotateCcw className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 flex space-x-4">
+                    <Button 
+                      type="submit" 
+                      className="bg-[#068d1f] hover:bg-[#087055] text-white px-8 py-3"
+                    >
+                      Save
                     </Button>
-                    <Button type="submit" className="bg-[#068d1f] hover:bg-[#087055] text-white">
-                      Add Agent
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={handleBackToAgents}
+                      className="px-8 py-3"
+                    >
+                      Cancel
                     </Button>
                   </div>
                 </form>
-              </DialogContent>
-            </Dialog>
+              </CardContent>
+            </Card>
           </div>
-        </div>
-
-        <Card className="shadow-sm border-0">
-          <CardContent className="p-0">
-            <div className="overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Agent Name</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Email</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Assigned Companies</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Login Code</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredAgents.length > 0 ? (
-                    filteredAgents.map((agent, index) => (
-                      <>
-                        <TableRow 
-                          key={agent.id} 
-                          className={`hover:bg-gray-50 border-0 ${
-                            index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                          }`}
-                        >
-                          <TableCell className="py-4 px-6 border-0">
-                            <div className="font-medium text-gray-900">
-                              {agent.firstName} {agent.lastName}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-gray-600 py-4 px-6 border-0">
-                            {agent.email}
-                          </TableCell>
-                          <TableCell className="text-center py-4 px-6 border-0">
-                            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 font-semibold px-3 py-1">
-                              {agent.assignedCompanyIds?.length || 0} companies
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-gray-600 font-mono py-4 px-6 border-0 text-sm">
-                            <code className="bg-gray-100 px-2 py-1 rounded">{agent.loginCode}</code>
-                          </TableCell>
-                          <TableCell className="text-center py-4 px-6 border-0">
-                            <Badge className={`font-semibold px-3 py-1 ${
-                              agent.isActive 
-                                ? 'bg-green-100 text-green-800' 
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {agent.isActive ? 'Active' : 'Inactive'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center py-4 px-6 border-0">
-                            <div className="flex space-x-2 justify-center">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-3 py-2 text-xs font-medium rounded"
-                                onClick={() => setShowAssignedTo(showAssignedTo === agent.id ? null : agent.id)}
-                              >
-                                {showAssignedTo === agent.id ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
-                                {showAssignedTo === agent.id ? 'Hide' : 'View'}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-3 py-2 text-xs font-medium rounded"
-                                onClick={() => handleViewDetails(agent)}
-                              >
-                                Details
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                        {showAssignedTo === agent.id && agent.assignedCompanies && agent.assignedCompanies.length > 0 && (
-                          <TableRow className="border-0">
-                            <TableCell colSpan={6} className="bg-blue-50 p-6 border-0">
-                              <div className="space-y-3">
-                                <h4 className="font-semibold text-gray-900 text-lg">
-                                  Assigned Companies for {agent.firstName} {agent.lastName}
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                                  {agent.assignedCompanies.map((company) => (
-                                    <div key={company.id} className="bg-white p-4 rounded-lg border shadow-sm">
-                                      <div className="text-sm font-medium text-gray-900">
-                                        {company.companyName}
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </>
-                    ))
-                  ) : (
-                    <TableRow className="border-0">
-                      <TableCell colSpan={6} className="text-center py-12 text-gray-500 border-0">
-                        No agents found.
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {selectedAgent && (
-          <Dialog open={!!selectedAgent} onOpenChange={() => setSelectedAgent(null)}>
-            <DialogContent className="max-w-3xl">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-semibold text-gray-900">
-                  Agent Details - {selectedAgent.firstName} {selectedAgent.lastName}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">First Name</Label>
-                    <div className="text-base text-gray-900">{selectedAgent.firstName}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Last Name</Label>
-                    <div className="text-base text-gray-900">{selectedAgent.lastName}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Email</Label>
-                    <div className="text-base text-gray-900">{selectedAgent.email}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Login Code</Label>
-                    <div className="text-base text-gray-900 font-mono">
-                      <code className="bg-white px-3 py-1 rounded border">{selectedAgent.loginCode}</code>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Status</Label>
-                    <div className="text-sm mt-2">
-                      <Badge className={`font-semibold px-3 py-1 ${
-                        selectedAgent.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {selectedAgent.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Created</Label>
-                    <div className="text-base text-gray-900">
-                      {new Date(selectedAgent.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-
-                {selectedAgent.assignedCompanies && selectedAgent.assignedCompanies.length > 0 && (
-                  <div className="pt-6 border-t border-gray-200">
-                    <Label className="text-lg font-semibold text-gray-900 block mb-4">
-                      Assigned Companies ({selectedAgent.assignedCompanies.length})
-                    </Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {selectedAgent.assignedCompanies.map((company) => (
-                        <div key={company.id} className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                          <div className="text-sm font-medium text-blue-900">{company.companyName}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
         )}
       </div>
     </DashboardLayout>
