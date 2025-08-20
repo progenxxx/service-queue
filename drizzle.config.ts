@@ -1,4 +1,4 @@
-import { defineConfig } from 'drizzle-kit';
+/* import { defineConfig } from 'drizzle-kit';
 import { config } from 'dotenv';
 import path from 'path';
 
@@ -20,4 +20,17 @@ export default defineConfig({
   },
   verbose: true,
   strict: true,
-});
+}); */
+
+import 'dotenv/config';
+
+export default {
+  schema: './src/lib/db/schema.ts',
+  out: './drizzle',
+  dialect: 'postgresql',
+  dbCredentials: {
+    url: process.env.DATABASE_URL!,
+  },
+  verbose: true,
+  strict: true,
+};

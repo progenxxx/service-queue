@@ -14,9 +14,7 @@ import {
   Home,
   Star,
   FileText,
-  Clock,
-  CheckCircle2,
-  AlertTriangle
+  Clock
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Area, AreaChart } from 'recharts';
 

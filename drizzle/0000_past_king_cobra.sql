@@ -1,6 +1,18 @@
+CREATE TYPE "public"."activity_type" AS ENUM('request_created', 'request_updated', 'request_assigned', 'note_added', 'attachment_uploaded', 'status_changed', 'user_created', 'user_updated', 'company_updated');--> statement-breakpoint
 CREATE TYPE "public"."service_queue_category" AS ENUM('policy_inquiry', 'claims_processing', 'account_update', 'technical_support', 'billing_inquiry', 'other');--> statement-breakpoint
 CREATE TYPE "public"."task_status" AS ENUM('new', 'open', 'in_progress', 'closed');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('customer', 'customer_admin', 'agent', 'super_admin');--> statement-breakpoint
+CREATE TABLE "activity_logs" (
+	"id" text PRIMARY KEY NOT NULL,
+	"type" "activity_type" NOT NULL,
+	"description" text NOT NULL,
+	"user_id" text NOT NULL,
+	"company_id" text,
+	"request_id" text,
+	"metadata" text,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "agents" (
 	"id" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
@@ -21,6 +33,17 @@ CREATE TABLE "companies" (
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "companies_company_code_unique" UNIQUE("company_code")
+);
+--> statement-breakpoint
+CREATE TABLE "notifications" (
+	"id" text PRIMARY KEY NOT NULL,
+	"user_id" text NOT NULL,
+	"title" text NOT NULL,
+	"message" text NOT NULL,
+	"type" text DEFAULT 'info' NOT NULL,
+	"read" boolean DEFAULT false NOT NULL,
+	"metadata" text,
+	"created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "request_attachments" (
@@ -76,7 +99,11 @@ CREATE TABLE "users" (
 	CONSTRAINT "users_login_code_unique" UNIQUE("login_code")
 );
 --> statement-breakpoint
+ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_company_id_companies_id_fk" FOREIGN KEY ("company_id") REFERENCES "public"."companies"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_request_id_service_requests_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."service_requests"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "agents" ADD CONSTRAINT "agents_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "request_attachments" ADD CONSTRAINT "request_attachments_request_id_service_requests_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."service_requests"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "request_attachments" ADD CONSTRAINT "request_attachments_uploaded_by_id_users_id_fk" FOREIGN KEY ("uploaded_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "request_notes" ADD CONSTRAINT "request_notes_request_id_service_requests_id_fk" FOREIGN KEY ("request_id") REFERENCES "public"."service_requests"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint

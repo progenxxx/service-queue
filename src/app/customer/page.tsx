@@ -12,10 +12,8 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Building2, 
-  UserCheck, 
   BarChart3,
   Settings,
-  Users,
   FileText,
   Upload,
   X,
@@ -82,7 +80,6 @@ export default function AdminAllRequestsPage() {
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
-  const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [requestLogs, setRequestLogs] = useState<RequestLog[]>([]);
@@ -91,12 +88,6 @@ export default function AdminAllRequestsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const usersResponse = await fetch('/api/admin/users');
-        if (usersResponse.ok) {
-          const usersData = await usersResponse.json();
-          setUsers(usersData.users || []);
-        }
-
         const companiesResponse = await fetch('/api/admin/companies');
         if (companiesResponse.ok) {
           const companiesData = await companiesResponse.json();

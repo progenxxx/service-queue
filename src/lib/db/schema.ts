@@ -12,6 +12,17 @@ export const serviceQueueCategoryEnum = pgEnum('service_queue_category', [
   'billing_inquiry',
   'other',
 ]);
+export const activityTypeEnum = pgEnum('activity_type', [
+  'request_created',
+  'request_updated', 
+  'request_assigned',
+  'note_added',
+  'attachment_uploaded',
+  'status_changed',
+  'user_created',
+  'user_updated',
+  'company_updated'
+]);
 
 export const companies = pgTable('companies', {
   id: text('id').primaryKey().$defaultFn(() => createId()),
@@ -83,10 +94,33 @@ export const requestAttachments = pgTable('request_attachments', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const activityLogs = pgTable('activity_logs', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  type: activityTypeEnum('type').notNull(),
+  description: text('description').notNull(),
+  userId: text('user_id').references(() => users.id).notNull(),
+  companyId: text('company_id').references(() => companies.id),
+  requestId: text('request_id').references(() => serviceRequests.id),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const notifications = pgTable('notifications', {
+  id: text('id').primaryKey().$defaultFn(() => createId()),
+  userId: text('user_id').references(() => users.id).notNull(),
+  title: text('title').notNull(),
+  message: text('message').notNull(),
+  type: text('type').notNull().default('info'),
+  read: boolean('read').default(false).notNull(),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 /* ---------------- Relations ---------------- */
 export const companiesRelations = relations(companies, ({ many }) => ({
   users: many(users),
   serviceRequests: many(serviceRequests),
+  activityLogs: many(activityLogs),
 }));
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -109,6 +143,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   notes: many(requestNotes),
   attachments: many(requestAttachments),
+  activityLogs: many(activityLogs),
+  notifications: many(notifications),
 }));
 
 export const agentsRelations = relations(agents, ({ one }) => ({
@@ -140,6 +176,7 @@ export const serviceRequestsRelations = relations(serviceRequests, ({ one, many 
   }),
   notes: many(requestNotes),
   attachments: many(requestAttachments),
+  activityLogs: many(activityLogs),
 }));
 
 export const requestNotesRelations = relations(requestNotes, ({ one }) => ({
@@ -160,6 +197,28 @@ export const requestAttachmentsRelations = relations(requestAttachments, ({ one 
   }),
   uploadedBy: one(users, {
     fields: [requestAttachments.uploadedById],
+    references: [users.id],
+  }),
+}));
+
+export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [activityLogs.userId],
+    references: [users.id],
+  }),
+  company: one(companies, {
+    fields: [activityLogs.companyId],
+    references: [companies.id],
+  }),
+  request: one(serviceRequests, {
+    fields: [activityLogs.requestId],
+    references: [serviceRequests.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
     references: [users.id],
   }),
 }));

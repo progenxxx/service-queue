@@ -33,6 +33,16 @@ interface DashboardLayoutProps {
   title: string;
 }
 
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  timestamp: string;
+  metadata?: Record<string, unknown>;
+}
+
 const getInitials = (firstName: string, lastName: string) => {
   return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 };
@@ -43,6 +53,8 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
   const router = useRouter();
 
   const fetchUserData = useCallback(async () => {
@@ -61,9 +73,24 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
     }
   }, [router]);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const response = await fetch('/api/notifications', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch {
+      setNotifications([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUserData();
-  }, [fetchUserData]);
+    fetchNotifications();
+  }, [fetchUserData, fetchNotifications]);
 
   const handleLogout = async () => {
     if (isLoggingOut) return;
@@ -102,22 +129,46 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
     }
   };
 
+  const handleNotificationRead = async (notificationId: string) => {
+    try {
+      await fetch(`/api/notifications/read`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ notificationId }),
+      });
+      
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
+    } catch {
+      // Handle error silently
+    }
+  };
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
       if (dropdownOpen && !target.closest('[data-dropdown]')) {
         setDropdownOpen(false);
       }
+      if (showNotifications && !target.closest('[data-notifications]')) {
+        setShowNotifications(false);
+      }
     };
 
-    if (dropdownOpen) {
+    if (dropdownOpen || showNotifications) {
       document.addEventListener('click', handleClickOutside);
     }
 
     return () => {
       document.removeEventListener('click', handleClickOutside);
     };
-  }, [dropdownOpen]);
+  }, [dropdownOpen, showNotifications]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -159,10 +210,49 @@ export default function DashboardLayout({ children, navigation, title }: Dashboa
             </div>
 
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Button variant="ghost" size="sm" className="p-2">
+              <div className="relative" data-notifications>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="p-2 relative"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                >
                   <Bell className="h-5 w-5 text-gray-500" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </Button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                    <div className="p-4 border-b border-gray-100">
+                      <h3 className="text-sm font-medium text-gray-900">Notifications</h3>
+                    </div>
+                    {notifications.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        {notifications.map((notification) => (
+                          <div
+                            key={notification.id}
+                            className={`p-4 hover:bg-gray-50 cursor-pointer ${
+                              !notification.read ? 'bg-blue-50' : ''
+                            }`}
+                            onClick={() => handleNotificationRead(notification.id)}
+                          >
+                            <p className="text-sm text-gray-900">{notification.title}</p>
+                            <p className="text-xs text-gray-500 mt-1">{notification.message}</p>
+                            <p className="text-xs text-gray-400 mt-1">{notification.timestamp}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No notifications
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="relative" data-dropdown>

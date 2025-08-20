@@ -15,7 +15,6 @@ import {
   Settings,
   Users,
   Trash2,
-  RotateCcw,
   Copy,
   Check
 } from 'lucide-react';
@@ -60,12 +59,9 @@ export default function CustomerManagementPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showUsersModal, setShowUsersModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showResetCodeDialog, setShowResetCodeDialog] = useState(false);
   const [customerToDelete, setCustomerToDelete] = useState<string | null>(null);
-  const [customerToResetCode, setCustomerToResetCode] = useState<Customer | null>(null);
   const [generatedCode, setGeneratedCode] = useState<string>('');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [isResettingCode, setIsResettingCode] = useState(false);
   const [formData, setFormData] = useState({
     companyName: '',
     primaryContact: '',
@@ -148,35 +144,6 @@ export default function CustomerManagementPage() {
     }
   };
 
-  const handleResetCode = async () => {
-    if (!customerToResetCode) return;
-    
-    setIsResettingCode(true);
-    try {
-      const response = await fetch('/api/admin/customers/reset-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerId: customerToResetCode.id }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setGeneratedCode(data.newCompanyCode);
-        fetchCustomers();
-        setShowResetCodeDialog(false);
-        setCustomerToResetCode(null);
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to reset company code');
-      }
-    } catch (error) {
-      console.error('Reset code error:', error);
-      alert('Failed to reset company code');
-    } finally {
-      setIsResettingCode(false);
-    }
-  };
-
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -190,11 +157,6 @@ export default function CustomerManagementPage() {
   const confirmDelete = (customerId: string) => {
     setCustomerToDelete(customerId);
     setShowDeleteDialog(true);
-  };
-
-  const confirmResetCode = (customer: Customer) => {
-    setCustomerToResetCode(customer);
-    setShowResetCodeDialog(true);
   };
 
   const handleViewDetails = (customer: Customer) => {
@@ -228,17 +190,17 @@ export default function CustomerManagementPage() {
     <DashboardLayout navigation={navigation} title="">
       <div className="space-y-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Customer Management</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">Customers</h1>
           <div className="flex items-center space-x-4">
             <Input
               placeholder="Search customers..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-64"
+              className="w-64 rounded-lg border-gray-200"
             />
             <Dialog open={showAddCustomer} onOpenChange={setShowAddCustomer}>
               <DialogTrigger asChild>
-                <Button className="bg-[#068d1f] hover:bg-[#087055] text-white">
+                <Button className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">
                   Add Customer
                 </Button>
               </DialogTrigger>
@@ -301,7 +263,7 @@ export default function CustomerManagementPage() {
                     <Button type="button" variant="outline" onClick={() => setShowAddCustomer(false)}>
                       Cancel
                     </Button>
-                    <Button type="submit" className="bg-[#068d1f] hover:bg-[#087055] text-white">
+                    <Button type="submit" className="bg-green-600 hover:bg-green-700 text-white">
                       Add Customer
                     </Button>
                   </div>
@@ -345,7 +307,7 @@ export default function CustomerManagementPage() {
                   </p>
                 </div>
                 <div className="flex justify-end">
-                  <Button onClick={() => setGeneratedCode('')} className="bg-[#068d1f] hover:bg-[#087055] text-white">
+                  <Button onClick={() => setGeneratedCode('')} className="bg-green-600 hover:bg-green-700 text-white">
                     Continue
                   </Button>
                 </div>
@@ -354,72 +316,27 @@ export default function CustomerManagementPage() {
           </Dialog>
         )}
 
-        <Dialog open={showResetCodeDialog} onOpenChange={setShowResetCodeDialog}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-orange-700">Reset Company Code</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-                <div className="flex items-center space-x-2 mb-2">
-                  <RotateCcw className="h-5 w-5 text-orange-600" />
-                  <Label className="text-sm font-medium text-orange-700">Generate New Code</Label>
-                </div>
-                {customerToResetCode && (
-                  <div>
-                    <p className="text-sm text-orange-700 mb-2">
-                      Company: <strong>{customerToResetCode.companyName}</strong>
-                    </p>
-                    <p className="text-sm text-orange-700 mb-2">
-                      Primary Contact: <strong>{customerToResetCode.primaryContact}</strong>
-                    </p>
-                    <p className="text-sm text-orange-700 mb-3">
-                      Current Code: <code className="bg-orange-100 px-2 py-1 rounded font-mono">{customerToResetCode.companyCode}</code>
-                    </p>
-                    <div className="text-lg font-mono font-bold text-orange-800 bg-white px-3 py-2 rounded border">
-                      New Code: {generateCompanyCode()}
-                    </div>
-                  </div>
-                )}
-              </div>
-              <p className="text-sm text-gray-600">
-                Are you sure you want to generate a new company code for <strong>{customerToResetCode?.primaryContact}</strong>? The new code will be sent to the customer&apos;s email address, and the old code will no longer be valid.
-              </p>
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowResetCodeDialog(false);
-                    setCustomerToResetCode(null);
-                  }}
-                  disabled={isResettingCode}
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
-                  onClick={handleResetCode}
-                  disabled={isResettingCode}
-                >
-                  {isResettingCode ? 'Generating...' : 'Reset Code'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Card className="shadow-sm border-0">
+        <Card className="rounded-lg border border-gray-200 shadow-sm">
           <CardContent className="p-0">
-            <div className="overflow-hidden">
+            <div className="overflow-hidden rounded-lg">
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Company Name</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Primary Contact</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Phone</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Email</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Code</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Actions</TableHead>
+                  <TableRow className="bg-green-600 hover:bg-green-600 border-0">
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0 rounded-tl-lg">
+                      Company Name
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Primary Contact
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Phone
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Email
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0 rounded-tr-lg">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -427,9 +344,7 @@ export default function CustomerManagementPage() {
                     filteredCustomers.map((customer, index) => (
                       <TableRow 
                         key={customer.id} 
-                        className={`hover:bg-gray-50 border-0 ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        }`}
+                        className="hover:bg-gray-50 border-0 border-b border-gray-100 last:border-b-0"
                       >
                         <TableCell className="font-medium text-gray-900 py-4 px-6 border-0">
                           {customer.companyName}
@@ -443,31 +358,12 @@ export default function CustomerManagementPage() {
                         <TableCell className="text-gray-600 py-4 px-6 border-0">
                           {customer.email}
                         </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="flex items-center space-x-2">
-                            <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono font-semibold text-gray-800">
-                              {customer.companyCode}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(customer.companyCode)}
-                              className="p-1 h-auto hover:bg-gray-200"
-                            >
-                              {copiedCode === customer.companyCode ? (
-                                <Check className="h-3 w-3 text-green-600" />
-                              ) : (
-                                <Copy className="h-3 w-3 text-gray-500" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
                         <TableCell className="text-center py-4 px-6 border-0">
                           <div className="flex space-x-2 justify-center">
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-4 py-2 text-xs font-medium rounded"
+                              className="bg-green-600 text-white border-green-600 hover:bg-green-700 hover:border-green-700 px-4 py-2 text-xs rounded-lg"
                               onClick={() => handleViewUsers(customer)}
                             >
                               View Users
@@ -475,7 +371,7 @@ export default function CustomerManagementPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-4 py-2 text-xs font-medium rounded"
+                              className="bg-green-600 text-white border-green-600 hover:bg-green-700 hover:border-green-700 px-4 py-2 text-xs rounded-lg"
                               onClick={() => handleViewDetails(customer)}
                             >
                               View Details
@@ -483,16 +379,7 @@ export default function CustomerManagementPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-orange-600 border-orange-400 hover:bg-orange-500 hover:text-white px-3 py-2 rounded flex items-center space-x-1"
-                              onClick={() => confirmResetCode(customer)}
-                            >
-                              <RotateCcw className="h-4 w-4" />
-                              <span>Reset</span>
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-gray-600 border-gray-400 hover:bg-gray-500 hover:text-white px-3 py-2 rounded"
+                              className="text-gray-500 border-gray-300 hover:bg-gray-100 hover:text-gray-700 p-2 rounded-lg"
                               onClick={() => confirmDelete(customer.id)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -503,7 +390,7 @@ export default function CustomerManagementPage() {
                     ))
                   ) : (
                     <TableRow className="border-0">
-                      <TableCell colSpan={6} className="text-center py-12 text-gray-500 border-0">
+                      <TableCell colSpan={5} className="text-center py-12 text-gray-500 border-0">
                         No customers found.
                       </TableCell>
                     </TableRow>
