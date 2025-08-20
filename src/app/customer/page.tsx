@@ -1,3 +1,4 @@
+// src/app/admin/customers/requests/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -10,22 +11,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
-  Building2, 
-  BarChart3,
-  Settings,
-  FileText,
-  Upload,
-  X,
-  Send,
-  Loader2
-} from 'lucide-react';
+import { Building2, UserCheck, BarChart3, Settings, Users, FileText, Upload, X, Send, Loader2 } from 'lucide-react';
 
 const navigation = [
-  { name: 'Create Request', href: '/customer', icon: Building2, current: false },
+  { name: 'Create Request', href: '/customer/customers', icon: Building2, current: false },
   { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
   { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
-  { name: 'Admin Settings', href: '/customer/settings', icon: Settings, current: false },
+  { name: 'Admin Settings', href: 'customer/admin/settings', icon: Settings, current: false },
 ];
 
 interface User {
@@ -43,19 +35,35 @@ interface Company {
   primaryContact: string;
 }
 
-interface RequestLog {
+interface Agent {
   id: string;
-  serviceQueueId: string;
-  client: string;
-  serviceRequestNarrative: string;
-  taskStatus: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  loginCode: string;
+  assignedCompanyIds: string[];
+  isActive: boolean;
   createdAt: string;
-  assignedBy: {
+  assignedCompanies?: Array<{
+    id: string;
+    companyName: string;
+  }>;
+}
+
+interface NoteLog {
+  id: string;
+  noteContent: string;
+  createdAt: string;
+  author: {
     firstName: string;
     lastName: string;
   };
-  company: {
-    companyName: string;
+  request: {
+    serviceQueueId: string;
+    client: string;
+    company: {
+      companyName: string;
+    };
   };
 }
 
@@ -67,62 +75,141 @@ export default function AdminAllRequestsPage() {
     serviceObjective: '',
     client: '',
     assignedById: '',
+    serviceQueueCategory: '',
     companyId: '',
   });
 
-  const [noteData, setNoteData] = useState({
-    noteTitle: '',
-    noteDetails: '',
-    emailAddress: ''
-  });
-
+  const [noteData, setNoteData] = useState({ noteTitle: '', noteDetails: '', emailAddress: '' });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [requestLogs, setRequestLogs] = useState<RequestLog[]>([]);
+  const [noteLogs, setNoteLogs] = useState<NoteLog[]>([]);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const companiesResponse = await fetch('/api/admin/companies');
-        if (companiesResponse.ok) {
-          const companiesData = await companiesResponse.json();
-          setCompanies(companiesData.companies || []);
-        }
-
-        const currentUserResponse = await fetch('/api/auth/me');
-        if (currentUserResponse.ok) {
-          const currentUserData = await currentUserResponse.json();
-          setCurrentUser(currentUserData.user);
-          setFormData(prev => ({
-            ...prev,
-            assignedById: currentUserData.user.id,
-            companyId: currentUserData.user.companyId || ''
-          }));
-        }
-
-        await fetchRequestLogs();
+        await Promise.all([
+          fetchCompanies(),
+          fetchAgents(),
+          fetchUsers(),
+          fetchCurrentUser(),
+          fetchNoteLogs()
+        ]);
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        console.error('Error fetching data:', error);
       }
     };
 
     fetchData();
   }, []);
 
-  const fetchRequestLogs = async () => {
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch('/api/admin/companies');
+      if (response.ok) {
+        const data = await response.json();
+        const validCompanies = (data.companies || []).filter(
+          (company: Company) =>
+            company &&
+            typeof company.id === 'string' &&
+            typeof company.companyName === 'string' &&
+            typeof company.primaryContact === 'string'
+        );
+        setCompanies(validCompanies);
+      } else {
+        setCompanies([]);
+      }
+    } catch (error) {
+      setCompanies([]);
+    }
+  };
+
+  const fetchAgents = async () => {
+    try {
+      const response = await fetch('/api/admin/agents');
+      if (response.ok) {
+        const data = await response.json();
+        const validAgents = (data.agents || []).filter(
+          (agent: Agent) =>
+            agent &&
+            typeof agent.id === 'string' &&
+            typeof agent.firstName === 'string' &&
+            typeof agent.lastName === 'string' &&
+            agent.isActive === true
+        );
+        setAgents(validAgents);
+      } else {
+        setAgents([]);
+      }
+    } catch (error) {
+      setAgents([]);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users');
+      if (response.ok) {
+        const data = await response.json();
+        const validUsers = (data.users || []).filter(
+          (user: User) =>
+            user &&
+            typeof user.id === 'string' &&
+            typeof user.firstName === 'string' &&
+            typeof user.lastName === 'string'
+        );
+        setUsers(validUsers);
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      setUsers([]);
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setCurrentUser(data.user);
+          setFormData((prev) => ({
+            ...prev,
+            assignedById: data.user.id,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+    }
+  };
+
+  const fetchNoteLogs = async () => {
     try {
       const response = await fetch('/api/admin/request');
       if (response.ok) {
         const data = await response.json();
-        setRequestLogs(data.requests || []);
+        const validNotes = (data.notes || []).filter(
+          (note: NoteLog) =>
+            note &&
+            note.id &&
+            note.author &&
+            note.request &&
+            typeof note.noteContent === 'string'
+        );
+        setNoteLogs(validNotes);
+      } else {
+        setNoteLogs([]);
       }
     } catch (error) {
-      console.error('Failed to fetch request logs:', error);
+      setNoteLogs([]);
     }
   };
 
@@ -139,12 +226,16 @@ export default function AdminAllRequestsPage() {
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(files => files.filter((_, i) => i !== index));
+    setSelectedFiles((files) => files.filter((_, i) => i !== index));
   };
 
   const handleAddNote = async () => {
     if (!noteData.noteDetails.trim() || !noteData.emailAddress.trim()) {
       alert('Please fill in the note details and email address');
+      return;
+    }
+    if (!currentRequestId) {
+      alert('Please create a service request first');
       return;
     }
 
@@ -161,20 +252,15 @@ export default function AdminAllRequestsPage() {
       });
 
       const result = await response.json();
-
       if (response.ok) {
         setShowNoteDialog(false);
-        setNoteData({
-          noteTitle: '',
-          noteDetails: '',
-          emailAddress: ''
-        });
+        setNoteData({ noteTitle: '', noteDetails: '', emailAddress: '' });
         alert('Note added and email sent successfully!');
+        await fetchNoteLogs();
       } else {
-        alert(`Failed to add note: ${result.error}`);
+        alert(`Failed to add note: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error adding note:', error);
       alert('Error adding note');
     } finally {
       setIsAddingNote(false);
@@ -183,25 +269,29 @@ export default function AdminAllRequestsPage() {
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
+    if (!formData.client || !formData.serviceObjective || !formData.assignedById) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('client', formData.client);
       formDataToSend.append('serviceRequestNarrative', formData.serviceObjective);
-      formDataToSend.append('serviceQueueCategory', 'other');
+      formDataToSend.append('serviceQueueCategory', formData.serviceQueueCategory);
       formDataToSend.append('serviceQueueId', formData.serviceQueueId);
       formDataToSend.append('assignedById', formData.assignedById);
-      
-      if (formData.dueDate) {
-        formDataToSend.append('dueDate', formData.dueDate);
-      }
-      
+
       if (formData.companyId) {
         formDataToSend.append('companyId', formData.companyId);
       }
+      if (formData.dueDate) {
+        formDataToSend.append('dueDate', formData.dueDate);
+      }
 
-      selectedFiles.forEach(file => {
+      selectedFiles.forEach((file) => {
         formDataToSend.append('files', file);
       });
 
@@ -211,11 +301,10 @@ export default function AdminAllRequestsPage() {
       });
 
       const result = await response.json();
-
       if (response.ok) {
-        const newRequestId = result.request.id;
+        const newRequestId = result.request?.id;
         setCurrentRequestId(newRequestId);
-        
+
         setFormData({
           serviceQueueId: generateServiceQueueId(),
           taskStatus: 'new',
@@ -223,18 +312,17 @@ export default function AdminAllRequestsPage() {
           serviceObjective: '',
           client: '',
           assignedById: currentUser?.id || '',
-          companyId: currentUser?.companyId || '',
+          serviceQueueCategory: '',
+          companyId: '',
         });
+
         setSelectedFiles([]);
-        
-        await fetchRequestLogs();
-        
+        await fetchNoteLogs();
         alert('Service request created successfully!');
       } else {
-        alert(`Failed to create service request: ${result.error}`);
+        alert(`Failed to create service request: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error creating service request:', error);
       alert('Error creating service request');
     } finally {
       setIsSubmitting(false);
@@ -255,24 +343,33 @@ export default function AdminAllRequestsPage() {
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'open':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
-        return 'bg-orange-100 text-orange-800';
-      case 'closed':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getAllAssignableUsers = () => {
+    const agentUsers = agents.map(agent => ({
+      id: agent.id, // Use agent ID, backend will handle the mapping
+      userId: agent.id, // Store agent ID for backend mapping
+      name: `${agent.firstName} ${agent.lastName}`,
+      type: 'Agent',
+      email: agent.email
+    }));
+
+    const superAdminUsers = users
+      .filter(user => user.role === 'super_admin')
+      .map(user => ({
+        id: user.id, // Use user ID directly
+        userId: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        type: 'Super Admin',
+        email: user.email
+      }));
+
+    return [...agentUsers, ...superAdminUsers];
   };
+
+  const assignableUsers = getAllAssignableUsers();
 
   return (
     <DashboardLayout navigation={navigation} title="">
@@ -345,7 +442,7 @@ export default function AdminAllRequestsPage() {
 
                     <div>
                       <Label htmlFor="serviceObjective" className="text-sm font-medium text-gray-700 mb-2 block">
-                        Service Objective and Narrative
+                        Service Objective and Narrative *
                       </Label>
                       <Textarea
                         id="serviceObjective"
@@ -360,36 +457,105 @@ export default function AdminAllRequestsPage() {
 
                     <div>
                       <Label htmlFor="client" className="text-sm font-medium text-gray-700 mb-2 block">
-                        Client
+                        Client *
                       </Label>
-                      <Input
-                        id="client"
-                        value={formData.client}
-                        onChange={(e) => setFormData({...formData, client: e.target.value})}
-                        placeholder="Enter client name"
-                        className="border-gray-200"
-                        required
-                      />
+                      <Select 
+                        value={formData.client} 
+                        onValueChange={(value) => {
+                          const selectedCompany = companies.find(c => c.primaryContact === value);
+                          setFormData({
+                            ...formData, 
+                            client: value,
+                            companyId: selectedCompany?.id || ''
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="border-gray-200 bg-white">
+                          <SelectValue placeholder="Select a client" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          {companies.length > 0 ? (
+                            companies.map((company) => (
+                              <SelectItem 
+                                key={company.id} 
+                                value={company.primaryContact}
+                                className="bg-white hover:bg-gray-50"
+                              >
+                                {company.primaryContact} - {company.companyName}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-clients" disabled className="text-gray-400">
+                              No clients available
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div>
-                      <Label htmlFor="companyId" className="text-sm font-medium text-gray-700 mb-2 block">
-                        Company
+                      <Label htmlFor="assignedById" className="text-sm font-medium text-gray-700 mb-2 block">
+                        The Person Who Assigned (Assigned By) *
                       </Label>
-                      <Select value={formData.companyId} onValueChange={(value) => setFormData({...formData, companyId: value})}>
+                      <Select 
+                        value={formData.assignedById} 
+                        onValueChange={(value) => setFormData({...formData, assignedById: value})}
+                      >
                         <SelectTrigger className="border-gray-200 bg-white">
-                          <SelectValue placeholder="Select a company" />
+                          <SelectValue placeholder="Select an assignee" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          {companies.map((company) => (
-                            <SelectItem 
-                              key={company.id} 
-                              value={company.id}
-                              className="bg-white hover:bg-gray-50"
-                            >
-                              {company.companyName}
+                          {assignableUsers.length > 0 ? (
+                            assignableUsers.map((user) => (
+                              <SelectItem 
+                                key={user.id} 
+                                value={user.id}
+                                className="bg-white hover:bg-gray-50"
+                              >
+                                {user.name} ({user.type})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-users" disabled className="text-gray-400">
+                              No assignable users available
                             </SelectItem>
-                          ))}
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {assignableUsers.length === 0 && (
+                        <p className="mt-1 text-xs text-red-500">
+                          No agents or admin users found. Please create agents first.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="serviceQueueCategory" className="text-sm font-medium text-gray-700 mb-2 block">
+                        Service Queue Category
+                      </Label>
+                      <Select value={formData.serviceQueueCategory} onValueChange={(value) => setFormData({...formData, serviceQueueCategory: value})}>
+                        <SelectTrigger className="border-gray-200 bg-white">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="policy_inquiry" className="bg-white hover:bg-gray-50">
+                            Policy Inquiry
+                          </SelectItem>
+                          <SelectItem value="claims_processing" className="bg-white hover:bg-gray-50">
+                            Claims Processing
+                          </SelectItem>
+                          <SelectItem value="account_update" className="bg-white hover:bg-gray-50">
+                            Account Update
+                          </SelectItem>
+                          <SelectItem value="technical_support" className="bg-white hover:bg-gray-50">
+                            Technical Support
+                          </SelectItem>
+                          <SelectItem value="billing_inquiry" className="bg-white hover:bg-gray-50">
+                            Billing Inquiry
+                          </SelectItem>
+                          <SelectItem value="other" className="bg-white hover:bg-gray-50">
+                            Other
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -479,7 +645,7 @@ export default function AdminAllRequestsPage() {
           <div>
             <Card className="shadow-sm border border-gray-200 bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b border-gray-100">
-                <CardTitle className="text-lg font-semibold text-gray-900">Request Log</CardTitle>
+                <CardTitle className="text-lg font-semibold text-gray-900">Note Log</CardTitle>
                 <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
                   <DialogTrigger asChild>
                     <Badge 
@@ -519,7 +685,7 @@ export default function AdminAllRequestsPage() {
 
                       <div>
                         <Label htmlFor="noteDetails" className="text-sm font-medium text-gray-700 mb-2 block">
-                          Note Details
+                          Note Details *
                         </Label>
                         <Textarea
                           id="noteDetails"
@@ -534,7 +700,7 @@ export default function AdminAllRequestsPage() {
 
                       <div>
                         <Label htmlFor="emailAddress" className="text-sm font-medium text-gray-700 mb-2 block">
-                          Email Address
+                          Email Address *
                         </Label>
                         <Input
                           id="emailAddress"
@@ -571,34 +737,31 @@ export default function AdminAllRequestsPage() {
                 </Dialog>
               </CardHeader>
               <CardContent className="p-6">
-                {requestLogs.length > 0 ? (
+                {noteLogs.length > 0 ? (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {requestLogs.slice(0, 10).map((request) => (
-                      <div key={request.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    {noteLogs.slice(0, 10).map((note) => (
+                      <div key={note.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
                             <p className="text-xs font-medium text-teal-600 mb-1">
-                              {request.serviceQueueId}
+                              {note.request?.serviceQueueId || 'N/A'}
                             </p>
                             <p className="text-sm font-semibold text-gray-900 mb-1">
-                              {request.client}
+                              {note.request?.client || 'Unknown Client'}
                             </p>
                             <p className="text-xs text-gray-600 line-clamp-2">
-                              {request.serviceRequestNarrative}
+                              {note.noteContent}
                             </p>
                           </div>
-                          <Badge className={`ml-2 text-xs ${getStatusColor(request.taskStatus)}`}>
-                            {request.taskStatus}
-                          </Badge>
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>
-                            By: {request.assignedBy.firstName} {request.assignedBy.lastName}
+                            By: {note.author?.firstName || 'Unknown'} {note.author?.lastName || ''}
                           </span>
-                          <span>{formatDate(request.createdAt)}</span>
+                          <span>{formatDate(note.createdAt)}</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          Company: {request.company.companyName}
+                          Company: {note.request?.company?.companyName || 'N/A'}
                         </div>
                       </div>
                     ))}
@@ -606,7 +769,7 @@ export default function AdminAllRequestsPage() {
                 ) : (
                   <div className="text-center py-8 text-gray-400">
                     <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-sm">No request logs available</p>
+                    <p className="text-sm">No note logs available</p>
                   </div>
                 )}
               </CardContent>

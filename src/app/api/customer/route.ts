@@ -1,8 +1,9 @@
+// src/app/api/admin/request/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { serviceRequests, companies, users } from '@/lib/db/schema';
+import { serviceRequests, companies, users, requestNotes, agents } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { emailService } from '@/lib/email/sendgrid';
 
@@ -15,15 +16,9 @@ function generateServiceQueueId(): string {
 export const GET = requireRole(['super_admin'])(
   async () => {
     try {
-      const requests = await db.query.serviceRequests.findMany({
+      const notes = await db.query.requestNotes.findMany({
         with: {
-          company: {
-            columns: {
-              id: true,
-              companyName: true,
-            },
-          },
-          assignedTo: {
+          author: {
             columns: {
               id: true,
               firstName: true,
@@ -31,42 +26,21 @@ export const GET = requireRole(['super_admin'])(
               email: true,
             },
           },
-          assignedBy: {
-            columns: {
-              id: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-          notes: {
+          request: {
             with: {
-              author: {
+              company: {
                 columns: {
-                  firstName: true,
-                  lastName: true,
+                  companyName: true,
                 },
               },
             },
-            orderBy: (notes, { desc }) => [desc(notes.createdAt)],
-          },
-          attachments: {
-            with: {
-              uploadedBy: {
-                columns: {
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-            },
-            orderBy: (attachments, { desc }) => [desc(attachments.createdAt)],
           },
         },
-        orderBy: [desc(serviceRequests.createdAt)],
+        orderBy: [desc(requestNotes.createdAt)],
       });
 
-      return NextResponse.json({ requests });
+      return NextResponse.json({ notes });
     } catch (error) {
-      console.error('Failed to fetch all requests:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
@@ -82,17 +56,15 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       const serviceQueueCategory = formData.get('serviceQueueCategory') as string;
       const dueDateStr = formData.get('dueDate') as string;
       const serviceQueueId = formData.get('serviceQueueId') as string || generateServiceQueueId();
-      const assignedById = formData.get('assignedById') as string;
+      const assignedByIdRaw = formData.get('assignedById') as string;
       const companyId = formData.get('companyId') as string;
 
-      if (!client || !serviceRequestNarrative || !companyId) {
+      if (!client || !serviceRequestNarrative || !assignedByIdRaw) {
         return NextResponse.json(
-          { error: 'Client, service request narrative, and company are required' },
+          { error: 'Client, service request narrative, and assigned by are required' },
           { status: 400 }
         );
       }
-
-      const dueDate = dueDateStr ? new Date(dueDateStr) : null;
 
       const currentUserId = request.headers.get('x-user-id');
       const currentUserRole = request.headers.get('x-user-role');
@@ -105,12 +77,51 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         );
       }
 
-      const finalAssignedById = assignedById || currentUserId;
+      let finalAssignedById = assignedByIdRaw;
 
+      // Check if the assignedByIdRaw is an agent ID, if so get the user ID
+      const agentCheck = await db.query.agents.findFirst({
+        where: eq(agents.id, assignedByIdRaw),
+        with: {
+          user: {
+            columns: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (agentCheck) {
+        // It's an agent ID, use the associated user ID
+        finalAssignedById = agentCheck.user.id;
+      } else {
+        // Check if it's a valid user ID
+        const userCheck = await db.query.users.findFirst({
+          where: eq(users.id, assignedByIdRaw),
+        });
+
+        if (!userCheck) {
+          return NextResponse.json(
+            { error: 'Invalid assigned by user' },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Determine the final company ID based on user role
       let finalCompanyId = companyId;
       if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
         finalCompanyId = currentUserCompanyId;
       }
+
+      if (!finalCompanyId) {
+        return NextResponse.json(
+          { error: 'Company selection is required' },
+          { status: 400 }
+        );
+      }
+
+      const dueDate = dueDateStr ? new Date(dueDateStr) : null;
 
       let assignedToId = null;
       let primaryContactEmail = null;

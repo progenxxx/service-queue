@@ -20,7 +20,8 @@ import {
   Clock,
   CheckCircle2,
   AlertTriangle,
-  Home
+  Home,
+  Plus
 } from 'lucide-react';
 
 interface ServiceRequest {
@@ -69,7 +70,7 @@ const navigation = [
   { name: 'Dashboard', href: '/admin', icon: Home, current: false },
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
-  { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: false },
+  /* { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: false }, */
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
   { name: 'Summary', href: '/admin/summary', icon: BarChart3, current: true },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
@@ -187,6 +188,10 @@ export default function SummaryPage() {
     setShowDetailsModal(true);
   };
 
+  const handleAddServiceRequest = () => {
+    window.location.href = '/admin/customers/requests';
+  };
+
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
       case 'new':
@@ -228,219 +233,64 @@ export default function SummaryPage() {
   return (
     <DashboardLayout navigation={navigation} title="Summary">
       <div className="space-y-6">
-        {summaryStats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-blue-600">Total</p>
-                    <p className="text-2xl font-bold text-blue-900">{summaryStats.totalRequests}</p>
-                  </div>
-                  <div className="bg-blue-500 p-2 rounded-full">
-                    <FileText className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
+        </div>
 
-            <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-cyan-600">New</p>
-                    <p className="text-2xl font-bold text-cyan-900">{summaryStats.newRequests}</p>
-                  </div>
-                  <div className="bg-cyan-500 p-2 rounded-full">
-                    <FileText className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-yellow-600">Open</p>
-                    <p className="text-2xl font-bold text-yellow-900">{summaryStats.openRequests}</p>
-                  </div>
-                  <div className="bg-yellow-500 p-2 rounded-full">
-                    <Clock className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-orange-600">In Progress</p>
-                    <p className="text-2xl font-bold text-orange-900">{summaryStats.inProgressRequests}</p>
-                  </div>
-                  <div className="bg-orange-500 p-2 rounded-full">
-                    <Clock className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-green-600">Closed</p>
-                    <p className="text-2xl font-bold text-green-900">{summaryStats.closedRequests}</p>
-                  </div>
-                  <div className="bg-green-500 p-2 rounded-full">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-red-600">Overdue</p>
-                    <p className="text-2xl font-bold text-red-900">{summaryStats.overdueRequests}</p>
-                  </div>
-                  <div className="bg-red-500 p-2 rounded-full">
-                    <AlertTriangle className="h-4 w-4 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+        <div className="flex gap-4 items-center py-4">
+          <div className="flex-1">
+            <Input
+              placeholder="Search"
+              value={filters.search}
+              onChange={(e) => setFilters({...filters, search: e.target.value})}
+              className="border-0 shadow-none bg-gray-50 placeholder-gray-500"
+            />
           </div>
-        )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Filter Requests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              <div>
-                <Label htmlFor="search" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Search
-                </Label>
-                <Input
-                  id="search"
-                  placeholder="Search requests..."
-                  value={filters.search}
-                  onChange={(e) => setFilters({...filters, search: e.target.value})}
-                  className="w-full"
-                />
-              </div>
+          <div className="w-48">
+            <Select
+              value={filters.client || undefined}
+              onValueChange={(value) => setFilters({...filters, client: value || ''})}
+            >
+              <SelectTrigger className="border-0 shadow-none bg-gray-50">
+                <SelectValue placeholder="Select Clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Clients</SelectItem>
+                {getUniqueClients().map((client) => (
+                  <SelectItem key={client} value={client}>
+                    {client}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div>
-                <Label htmlFor="client" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Client
-                </Label>
-                <Select
-                  value={filters.client || undefined}
-                  onValueChange={(value) => setFilters({...filters, client: value || ''})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Clients" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All Clients</SelectItem>
-                    {getUniqueClients().map((client) => (
-                      <SelectItem key={client} value={client}>
-                        {client}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          <div className="w-48">
+            <Select
+              value={filters.status || undefined}
+              onValueChange={(value) => setFilters({...filters, status: value === '__all__' ? '' : value || ''})}
+            >
+              <SelectTrigger className="border-0 shadow-none bg-gray-50">
+                <SelectValue placeholder="Select Date" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Dates</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="in_progress">In Progress</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-              <div>
-                <Label htmlFor="assignedBy" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Assigned By
-                </Label>
-                <Select
-                  value={filters.assignedBy || undefined}
-                  onValueChange={(value) => setFilters({...filters, assignedBy: value === '__all__' ? '' : value || ''})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Users" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All Users</SelectItem>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.firstName} {user.lastName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="status" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Status
-                </Label>
-                <Select
-                  value={filters.status || undefined}
-                  onValueChange={(value) => setFilters({...filters, status: value === '__all__' ? '' : value || ''})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All Status</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="in_progress">In Progress</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="startDate" className="text-sm font-medium text-gray-700 mb-2 block">
-                  Start Date
-                </Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={filters.startDate}
-                  onChange={(e) => setFilters({...filters, startDate: e.target.value})}
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="endDate" className="text-sm font-medium text-gray-700 mb-2 block">
-                  End Date
-                </Label>
-                <Input
-                  id="endDate"
-                  type="date"
-                  value={filters.endDate}
-                  onChange={(e) => setFilters({...filters, endDate: e.target.value})}
-                  className="w-full"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center mt-4">
-              <div className="text-sm text-gray-600">
-                Showing {filteredRequests.length} of {requests.length} requests
-              </div>
-              <Button
-                variant="outline"
-                onClick={resetFilters}
-                className="text-gray-600 border-gray-300 hover:bg-gray-50"
-              >
-                Clear Filters
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+          <Button
+            onClick={handleAddServiceRequest}
+            className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
+          >
+            Add Service Request
+          </Button>
+        </div>
 
         <Card className="shadow-sm border-0">
           <CardContent className="p-0">
@@ -448,14 +298,15 @@ export default function SummaryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Queue ID</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Client</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Request Narrative</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Serv Que ID</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned By</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Company</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created Date</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Actions</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Request Narrative</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Que Category</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned To:</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date:</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By:</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On:</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -468,18 +319,13 @@ export default function SummaryPage() {
                         }`}
                       >
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="font-medium text-[#087055]">
-                            {request.serviceQueueId}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
                           <div className="font-medium text-gray-900">
                             {request.client}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600 max-w-xs truncate">
-                            {request.serviceRequestNarrative}
+                          <div className="font-medium text-[#087055]">
+                            {request.serviceQueueId}
                           </div>
                         </TableCell>
                         <TableCell className="text-center py-4 px-6 border-0">
@@ -488,13 +334,28 @@ export default function SummaryPage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
-                            {request.assignedBy.firstName} {request.assignedBy.lastName}
+                          <div className="text-gray-600 max-w-xs truncate">
+                            {request.serviceRequestNarrative}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
-                            {request.company.companyName}
+                            {request.serviceQueueCategory.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 px-6 border-0">
+                          <div className="text-gray-600">
+                            {request.assignedTo ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}` : 'Not Assigned'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 px-6 border-0">
+                          <div className="text-gray-600">
+                            {request.dueDate ? formatDate(request.dueDate) : 'No Due Date'}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 px-6 border-0">
+                          <div className="text-gray-600">
+                            {request.assignedBy.firstName} {request.assignedBy.lastName}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
@@ -502,21 +363,11 @@ export default function SummaryPage() {
                             {formatDate(request.createdAt)}
                           </div>
                         </TableCell>
-                        <TableCell className="text-center py-4 px-6 border-0">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-4 py-2 text-xs font-medium rounded"
-                            onClick={() => handleViewDetails(request)}
-                          >
-                            View Details
-                          </Button>
-                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow className="border-0">
-                      <TableCell colSpan={8} className="text-center py-12 text-gray-500 border-0">
+                      <TableCell colSpan={9} className="text-center py-12 text-gray-500 border-0">
                         No requests found matching your filters.
                       </TableCell>
                     </TableRow>
@@ -526,79 +377,6 @@ export default function SummaryPage() {
             </div>
           </CardContent>
         </Card>
-
-        {selectedRequest && (
-          <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
-            <DialogContent className="max-w-4xl">
-              <DialogHeader>
-                <DialogTitle className="text-xl font-semibold text-gray-900">
-                  Request Details - {selectedRequest.serviceQueueId}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Service Queue ID</Label>
-                    <div className="text-base text-gray-900 font-mono">{selectedRequest.serviceQueueId}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Client</Label>
-                    <div className="text-base text-gray-900">{selectedRequest.client}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Status</Label>
-                    <Badge className={`font-semibold px-3 py-1 ${getStatusColor(selectedRequest.taskStatus)}`}>
-                      {selectedRequest.taskStatus.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Category</Label>
-                    <div className="text-base text-gray-900">{selectedRequest.serviceQueueCategory.replace('_', ' ')}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Company</Label>
-                    <div className="text-base text-gray-900">{selectedRequest.company.companyName}</div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Assigned By</Label>
-                    <div className="text-base text-gray-900">
-                      {selectedRequest.assignedBy.firstName} {selectedRequest.assignedBy.lastName}
-                    </div>
-                  </div>
-                  <div className="bg-gray-50 p-4 rounded-lg">
-                    <Label className="text-sm font-medium text-gray-700 block mb-1">Created Date</Label>
-                    <div className="text-base text-gray-900">{formatDate(selectedRequest.createdAt)}</div>
-                  </div>
-                  {selectedRequest.dueDate && (
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <Label className="text-sm font-medium text-gray-700 block mb-1">Due Date</Label>
-                      <div className="text-base text-gray-900">{formatDate(selectedRequest.dueDate)}</div>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <Label className="text-sm font-medium text-gray-700 block mb-2">Service Request Narrative</Label>
-                  <div className="text-base text-gray-900 whitespace-pre-wrap">
-                    {selectedRequest.serviceRequestNarrative}
-                  </div>
-                </div>
-
-                {selectedRequest.assignedTo && (
-                  <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-                    <Label className="text-sm font-medium text-blue-700 block mb-2">Assigned To</Label>
-                    <div className="text-base text-blue-900">
-                      {selectedRequest.assignedTo.firstName} {selectedRequest.assignedTo.lastName}
-                    </div>
-                    <div className="text-sm text-blue-700">
-                      {selectedRequest.assignedTo.email}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
-        )}
       </div>
     </DashboardLayout>
   );

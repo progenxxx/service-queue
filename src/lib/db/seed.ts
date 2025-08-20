@@ -9,8 +9,8 @@ async function seed() {
     const [axsCompany] = await db.insert(companies).values({
       companyName: 'Community Insurance Center',
       companyCode: 'CIC001',
-      primaryContact: 'Mark Ranny Aglapay',
-      email: 'aglapay.markranny@gmail.com',
+      primaryContact: 'AXS Modern',
+      email: 'axsmodern@gmail.com',
       phone: '09262214228',
     }).returning();
 

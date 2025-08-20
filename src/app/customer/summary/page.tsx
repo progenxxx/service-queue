@@ -67,9 +67,10 @@ interface SummaryStats {
 }
 
 const navigation = [
-  { name: 'Dashboard', href: '/agent', icon: Home, current: true },
-  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: false },
-  { name: 'Reports', href: '/agent/reports', icon: BarChart3, current: false },
+  { name: 'Create Request', href: '/customer/customers', icon: Building2, current: false },
+  { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
+  { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
+  { name: 'Admin Settings', href: 'customer/admin/settings', icon: Settings, current: false },
 ];
 
 export default function SummaryPage() {

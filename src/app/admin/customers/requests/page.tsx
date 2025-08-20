@@ -16,7 +16,7 @@ import { Building2, UserCheck, BarChart3, Settings, Users, FileText, Upload, X, 
 const navigation = [
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
-  { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: true },
+  /* { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: true }, */
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
   { name: 'Summary', href: '/admin/summary', icon: Building2, current: false },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
