@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,43 +11,44 @@ import { Loader2 } from 'lucide-react';
 import logoImage from '@/assets/images/logo.png';
 
 export default function AgentLoginPage() {
+  const [loginCode, setLoginCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [imageError, setImageError] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    const formData = new FormData(e.currentTarget);
-    const data = {
-      loginCode: formData.get('loginCode')
-    };
+    if (!loginCode.trim()) {
+      setError('Please enter your agent login code');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-        credentials: 'include',
+        body: JSON.stringify({ loginCode: loginCode.trim(), isAgent: true }),
       });
 
-      const result = await response.json();
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Login failed');
+        throw new Error(data.error || 'Login failed');
       }
 
-      if (result.user.role !== 'agent') {
-        throw new Error('Invalid agent login code');
-      }
-
-      if (typeof window !== 'undefined') {
-        window.location.href = '/agent';
+      if (data.success && data.user) {
+        router.push('/agent');
+        router.refresh();
+      } else {
+        throw new Error('Login failed - invalid response');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -54,11 +56,13 @@ export default function AgentLoginPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 w-full">
+    
       <div className="bg-[#087055] text-white py-8 w-full">
         <h1 className="text-center text-2xl font-bold">Service Queue</h1>
       </div>
       
       <div className="w-full min-h-[calc(100vh-80px)] flex flex-col items-center justify-start pt-16">
+
         <div className="mb-8">
           <div className="bg-[#f8f8f8] p-3 rounded-md flex items-center justify-center">
             {!imageError ? (
@@ -91,22 +95,21 @@ export default function AgentLoginPage() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <Label htmlFor="loginCode" className="block text-sm font-medium text-gray-700 mb-2">
-                    Login Code
+                    Agent Login Code
                   </Label>
                   <Input
                     id="loginCode"
                     name="loginCode"
                     type="text"
-                    placeholder="Enter your 7-digit login code"
+                    value={loginCode}
+                    onChange={(e) => setLoginCode(e.target.value.toUpperCase())}
+                    placeholder="Enter your 7-character agent code"
                     required
                     disabled={isLoading}
+                    autoComplete="off"
                     className="w-full h-12 px-4 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#087055] focus:border-[#087055]"
                     maxLength={7}
-                    minLength={7}
                   />
-                  {/* <p className="mt-1 text-xs text-gray-500">
-                    Agent login codes are created by super admins
-                  </p> */}
                 </div>
 
                 {error && (
@@ -118,28 +121,15 @@ export default function AgentLoginPage() {
                 <Button 
                   type="submit" 
                   className="w-full h-12 bg-[#087055] hover:bg-[#065946] text-white font-medium rounded-md" 
-                  disabled={isLoading}
+                  disabled={isLoading || !loginCode.trim()}
                 >
                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Sign In
+                  {isLoading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
             </div>
           </div>
 
-          {/* <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500 mb-2">
-              Other login options:
-            </p>
-            <div className="flex justify-center space-x-4">
-              <a href="/login/superadmin" className="text-sm text-[#087055] hover:underline">
-                Super Admin Login
-              </a>
-              <a href="/login" className="text-sm text-[#087055] hover:underline">
-                Customer Login
-              </a>
-            </div>
-          </div> */}
         </div>
       </div>
     </div>

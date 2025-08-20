@@ -48,19 +48,31 @@ interface Company {
   primaryContact: string;
 }
 
-interface RequestLog {
+interface Agent {
   id: string;
-  serviceQueueId: string;
-  client: string;
-  serviceRequestNarrative: string;
-  taskStatus: string;
+  userId: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
+interface NoteLog {
+  id: string;
+  noteContent: string;
   createdAt: string;
-  assignedBy: {
+  author: {
     firstName: string;
     lastName: string;
   };
-  company: {
-    companyName: string;
+  request: {
+    serviceQueueId: string;
+    client: string;
+    company: {
+      companyName: string;
+    };
   };
 }
 
@@ -72,6 +84,7 @@ export default function AdminAllRequestsPage() {
     serviceObjective: '',
     client: '',
     assignedById: '',
+    serviceQueueCategory: '',
     companyId: '',
   });
 
@@ -85,25 +98,25 @@ export default function AdminAllRequestsPage() {
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
-  //const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [requestLogs, setRequestLogs] = useState<RequestLog[]>([]);
+  const [noteLogs, setNoteLogs] = useState<NoteLog[]>([]);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        //const usersResponse = await fetch('/api/admin/users');
-        //if (usersResponse.ok) {
-          //const usersData = await usersResponse.json();
-          //setUsers(usersData.users || []);
-        //}
-
         const companiesResponse = await fetch('/api/admin/companies');
         if (companiesResponse.ok) {
           const companiesData = await companiesResponse.json();
           setCompanies(companiesData.companies || []);
+        }
+
+        const agentsResponse = await fetch('/api/admin/agents');
+        if (agentsResponse.ok) {
+          const agentsData = await agentsResponse.json();
+          setAgents(agentsData.agents || []);
         }
 
         const currentUserResponse = await fetch('/api/auth/me');
@@ -113,11 +126,10 @@ export default function AdminAllRequestsPage() {
           setFormData(prev => ({
             ...prev,
             assignedById: currentUserData.user.id,
-            companyId: currentUserData.user.companyId || ''
           }));
         }
 
-        await fetchRequestLogs();
+        await fetchNoteLogs();
       } catch (error) {
         console.error('Failed to fetch data:', error);
       }
@@ -126,15 +138,15 @@ export default function AdminAllRequestsPage() {
     fetchData();
   }, []);
 
-  const fetchRequestLogs = async () => {
+  const fetchNoteLogs = async () => {
     try {
       const response = await fetch('/api/admin/request');
       if (response.ok) {
         const data = await response.json();
-        setRequestLogs(data.requests || []);
+        setNoteLogs(data.notes || []);
       }
     } catch (error) {
-      console.error('Failed to fetch request logs:', error);
+      console.error('Failed to fetch note logs:', error);
     }
   };
 
@@ -182,6 +194,7 @@ export default function AdminAllRequestsPage() {
           emailAddress: ''
         });
         alert('Note added and email sent successfully!');
+        await fetchNoteLogs();
       } else {
         alert(`Failed to add note: ${result.error}`);
       }
@@ -201,16 +214,16 @@ export default function AdminAllRequestsPage() {
       const formDataToSend = new FormData();
       formDataToSend.append('client', formData.client);
       formDataToSend.append('serviceRequestNarrative', formData.serviceObjective);
-      formDataToSend.append('serviceQueueCategory', 'other');
+      formDataToSend.append('serviceQueueCategory', formData.serviceQueueCategory);
       formDataToSend.append('serviceQueueId', formData.serviceQueueId);
       formDataToSend.append('assignedById', formData.assignedById);
       
-      if (formData.dueDate) {
-        formDataToSend.append('dueDate', formData.dueDate);
-      }
-      
       if (formData.companyId) {
         formDataToSend.append('companyId', formData.companyId);
+      }
+      
+      if (formData.dueDate) {
+        formDataToSend.append('dueDate', formData.dueDate);
       }
 
       selectedFiles.forEach(file => {
@@ -235,11 +248,12 @@ export default function AdminAllRequestsPage() {
           serviceObjective: '',
           client: '',
           assignedById: currentUser?.id || '',
-          companyId: currentUser?.companyId || '',
+          serviceQueueCategory: '',
+          companyId: '',
         });
         setSelectedFiles([]);
         
-        await fetchRequestLogs();
+        await fetchNoteLogs();
         
         alert('Service request created successfully!');
       } else {
@@ -269,21 +283,6 @@ export default function AdminAllRequestsPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'open':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
-        return 'bg-orange-100 text-orange-800';
-      case 'closed':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
   };
 
   return (
@@ -374,34 +373,65 @@ export default function AdminAllRequestsPage() {
                       <Label htmlFor="client" className="text-sm font-medium text-gray-700 mb-2 block">
                         Client
                       </Label>
-                      <Input
-                        id="client"
-                        value={formData.client}
-                        onChange={(e) => setFormData({...formData, client: e.target.value})}
-                        placeholder="Enter client name"
-                        className="border-gray-200"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="companyId" className="text-sm font-medium text-gray-700 mb-2 block">
-                        Company
-                      </Label>
-                      <Select value={formData.companyId} onValueChange={(value) => setFormData({...formData, companyId: value})}>
+                      <Select value={formData.client} onValueChange={(value) => {
+                        const selectedCompany = companies.find(c => c.primaryContact === value);
+                        setFormData({
+                          ...formData, 
+                          client: value,
+                          companyId: selectedCompany?.id || ''
+                        });
+                      }}>
                         <SelectTrigger className="border-gray-200 bg-white">
-                          <SelectValue placeholder="Select a company" />
+                          <SelectValue placeholder="Select a client" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
                           {companies.map((company) => (
                             <SelectItem 
                               key={company.id} 
-                              value={company.id}
+                              value={company.primaryContact}
                               className="bg-white hover:bg-gray-50"
                             >
-                              {company.companyName}
+                              {company.primaryContact}
                             </SelectItem>
                           ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="assignedById" className="text-sm font-medium text-gray-700 mb-2 block">
+                        The Person Who Assigned (Assigned By)
+                      </Label>
+                      <Select value={formData.assignedById} onValueChange={(value) => setFormData({...formData, assignedById: value})}>
+                        <SelectTrigger className="border-gray-200 bg-white">
+                          <SelectValue placeholder="Select an agent" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          {agents.map((agent) => (
+                            <SelectItem 
+                              key={agent.id} 
+                              value={agent.userId}
+                              className="bg-white hover:bg-gray-50"
+                            >
+                              {agent.user.firstName} {agent.user.lastName}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="serviceQueueCategory" className="text-sm font-medium text-gray-700 mb-2 block">
+                        Service Queue Category
+                      </Label>
+                      <Select value={formData.serviceQueueCategory} onValueChange={(value) => setFormData({...formData, serviceQueueCategory: value})}>
+                        <SelectTrigger className="border-gray-200 bg-white">
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200">
+                          <SelectItem value="client_service_cancel_non_renewal" className="bg-white hover:bg-gray-50">
+                            Client Service - Cancel / Non Renewal Notice
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -491,7 +521,7 @@ export default function AdminAllRequestsPage() {
           <div>
             <Card className="shadow-sm border border-gray-200 bg-white">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b border-gray-100">
-                <CardTitle className="text-lg font-semibold text-gray-900">Request Log</CardTitle>
+                <CardTitle className="text-lg font-semibold text-gray-900">Note Log</CardTitle>
                 <Dialog open={showNoteDialog} onOpenChange={setShowNoteDialog}>
                   <DialogTrigger asChild>
                     <Badge 
@@ -583,34 +613,31 @@ export default function AdminAllRequestsPage() {
                 </Dialog>
               </CardHeader>
               <CardContent className="p-6">
-                {requestLogs.length > 0 ? (
+                {noteLogs.length > 0 ? (
                   <div className="space-y-3 max-h-96 overflow-y-auto">
-                    {requestLogs.slice(0, 10).map((request) => (
-                      <div key={request.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    {noteLogs.slice(0, 10).map((note) => (
+                      <div key={note.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
                             <p className="text-xs font-medium text-teal-600 mb-1">
-                              {request.serviceQueueId}
+                              {note.request?.serviceQueueId || 'N/A'}
                             </p>
                             <p className="text-sm font-semibold text-gray-900 mb-1">
-                              {request.client}
+                              {note.request?.client || 'Unknown Client'}
                             </p>
                             <p className="text-xs text-gray-600 line-clamp-2">
-                              {request.serviceRequestNarrative}
+                              {note.noteContent}
                             </p>
                           </div>
-                          <Badge className={`ml-2 text-xs ${getStatusColor(request.taskStatus)}`}>
-                            {request.taskStatus}
-                          </Badge>
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>
-                            By: {request.assignedBy.firstName} {request.assignedBy.lastName}
+                            By: {note.author.firstName} {note.author.lastName}
                           </span>
-                          <span>{formatDate(request.createdAt)}</span>
+                          <span>{formatDate(note.createdAt)}</span>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          Company: {request.company.companyName}
+                          Company: {note.request?.company?.companyName || 'N/A'}
                         </div>
                       </div>
                     ))}
@@ -618,7 +645,7 @@ export default function AdminAllRequestsPage() {
                 ) : (
                   <div className="text-center py-8 text-gray-400">
                     <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                    <p className="text-sm">No request logs available</p>
+                    <p className="text-sm">No note logs available</p>
                   </div>
                 )}
               </CardContent>

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { serviceRequests, companies, users } from '@/lib/db/schema';
+import { serviceRequests, companies, users, requestNotes } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { emailService } from '@/lib/email/sendgrid';
 
@@ -15,15 +15,9 @@ function generateServiceQueueId(): string {
 export const GET = requireRole(['super_admin'])(
   async () => {
     try {
-      const requests = await db.query.serviceRequests.findMany({
+      const notes = await db.query.requestNotes.findMany({
         with: {
-          company: {
-            columns: {
-              id: true,
-              companyName: true,
-            },
-          },
-          assignedTo: {
+          author: {
             columns: {
               id: true,
               firstName: true,
@@ -31,42 +25,21 @@ export const GET = requireRole(['super_admin'])(
               email: true,
             },
           },
-          assignedBy: {
-            columns: {
-              id: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-          notes: {
+          request: {
             with: {
-              author: {
+              company: {
                 columns: {
-                  firstName: true,
-                  lastName: true,
+                  companyName: true,
                 },
               },
             },
-            orderBy: (notes, { desc }) => [desc(notes.createdAt)],
-          },
-          attachments: {
-            with: {
-              uploadedBy: {
-                columns: {
-                  firstName: true,
-                  lastName: true,
-                },
-              },
-            },
-            orderBy: (attachments, { desc }) => [desc(attachments.createdAt)],
           },
         },
-        orderBy: [desc(serviceRequests.createdAt)],
+        orderBy: [desc(requestNotes.createdAt)],
       });
 
-      return NextResponse.json({ requests });
+      return NextResponse.json({ notes });
     } catch (error) {
-      console.error('Failed to fetch all requests:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
@@ -85,9 +58,21 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       const assignedById = formData.get('assignedById') as string;
       const companyId = formData.get('companyId') as string;
 
-      if (!client || !serviceRequestNarrative || !companyId) {
+      if (!client || !serviceRequestNarrative || !assignedById) {
         return NextResponse.json(
-          { error: 'Client, service request narrative, and company are required' },
+          { error: 'Client, service request narrative, and assigned by are required' },
+          { status: 400 }
+        );
+      }
+
+      let finalCompanyId = companyId;
+      if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
+        finalCompanyId = currentUserCompanyId;
+      }
+
+      if (!finalCompanyId) {
+        return NextResponse.json(
+          { error: 'Company selection is required' },
           { status: 400 }
         );
       }
@@ -104,8 +89,6 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
           { status: 401 }
         );
       }
-
-      const finalAssignedById = assignedById || currentUserId;
 
       let finalCompanyId = companyId;
       if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
@@ -143,7 +126,7 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         companyId: finalCompanyId,
         serviceRequestNarrative,
         serviceQueueCategory: serviceQueueCategory as 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'other',
-        assignedById: finalAssignedById,
+        assignedById,
         assignedToId,
         dueDate,
         taskStatus: 'new',
@@ -152,7 +135,7 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       if (primaryContactEmail && assignedToId) {
         try {
           const requestCreator = await db.query.users.findFirst({
-            where: eq(users.id, finalAssignedById),
+            where: eq(users.id, assignedById),
             columns: {
               firstName: true,
               lastName: true,

@@ -1,14 +1,14 @@
 import "dotenv/config";
 import { db } from './index';
 import { users, companies, agents } from './schema';
-import { hashPassword, generateLoginCode } from '../auth/utils';
+import { hashPassword, generateLoginCode } from '../auth/utils-node';
 import { emailService } from '../email/sendgrid';
 
 async function seed() {
   try {
     const [axsCompany] = await db.insert(companies).values({
       companyName: 'Community Insurance Center',
-      companyCode: 'CIC001', 
+      companyCode: 'CIC001',
       primaryContact: 'Mark Ranny Aglapay',
       email: 'aglapay.markranny@gmail.com',
       phone: '09262214228',
@@ -16,7 +16,7 @@ async function seed() {
 
     const [cicCompany] = await db.insert(companies).values({
       companyName: 'Community Insurance Center v2',
-      companyCode: 'CIC002', 
+      companyCode: 'CIC002',
       primaryContact: 'John Smith',
       email: 'john.smith@communityinscenter.net',
       phone: '555-0123',
@@ -35,7 +35,7 @@ async function seed() {
       isActive: true,
     }).returning();
 
-    const agentLoginCode = generateLoginCode();
+    const agentLoginCode = 'FAEA51B';
 
     const [agent] = await db.insert(users).values({
       firstName: 'Ancheta',
@@ -47,13 +47,11 @@ async function seed() {
       isActive: true,
     }).returning();
 
-    await db.insert(agents).values([
-      {
-        userId: agent.id,
-        assignedCompanyIds: [cicCompany.id],
-        isActive: true,
-      },
-    ]);
+    await db.insert(agents).values({
+      userId: agent.id,
+      assignedCompanyIds: [cicCompany.id],
+      isActive: true,
+    }).returning();
 
     const cicAdminLoginCode = generateLoginCode();
 
@@ -88,6 +86,13 @@ async function seed() {
         companyName: axsCompany.companyName,
       });
 
+      await emailService.sendAgentWelcome(agent.email, {
+        firstName: agent.firstName,
+        lastName: agent.lastName,
+        loginCode: agentLoginCode,
+        companyName: axsCompany.companyName,
+      });
+
       await emailService.sendCustomerAdminWelcome(customerAdmin.email, {
         firstName: customerAdmin.firstName,
         lastName: customerAdmin.lastName,
@@ -96,38 +101,28 @@ async function seed() {
         companyName: cicCompany.companyName,
       });
 
-      await emailService.sendAgentWelcome(agent.email, {
-        firstName: agent.firstName,
-        lastName: agent.lastName,
-        loginCode: agentLoginCode,
-        companyName: axsCompany.companyName,
-      });
-
       await emailService.sendCustomerWelcome(customer.email, {
         firstName: customer.firstName,
         lastName: customer.lastName,
         loginCode: customerLoginCode,
         companyName: cicCompany.companyName,
       });
-
-    } catch (emailError) {
-      console.error('Failed to send welcome emails:', emailError);
-    }
-
+    } catch (emailError) {}
   } catch (error) {
-    console.error('Seeding failed:', error);
-    throw new Error('Seeding failed');
+  if (error instanceof Error) {
+    throw new Error(`Seeding failed: ${error.message}`);
   }
+  throw new Error('Seeding failed: Unknown error');
+}
+
 }
 
 if (require.main === module) {
   seed()
     .then(() => {
-      console.log('Database seeded successfully');
       process.exit(0);
     })
-    .catch((error) => {
-      console.error('Seed script failed:', error);
+    .catch(() => {
       process.exit(1);
     });
 }

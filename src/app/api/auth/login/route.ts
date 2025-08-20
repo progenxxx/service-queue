@@ -9,6 +9,7 @@ const loginSchema = z.object({
   loginCode: z.string().optional(),
   email: z.string().email().optional(),
   password: z.string().optional(),
+  isAgent: z.boolean().optional().default(false),
 }).refine(
   (data) => (data.loginCode) || (data.email && data.password) || (data.email && data.loginCode),
   { message: "Either loginCode, email+password, or email+loginCode is required" }
@@ -21,7 +22,32 @@ export async function POST(request: NextRequest) {
 
     let user;
 
-    if (validatedData.loginCode && !validatedData.email && !validatedData.password) {
+    if (validatedData.isAgent && validatedData.loginCode && !validatedData.email && !validatedData.password) {
+      user = await db.query.users.findFirst({
+        where: and(
+          eq(users.loginCode, validatedData.loginCode),
+          eq(users.isActive, true)
+        ),
+        with: {
+          company: true,
+          agent: true,
+        },
+      });
+
+      if (!user) {
+        return NextResponse.json(
+          { error: 'Invalid agent login code' },
+          { status: 401 }
+        );
+      }
+
+      if (user.role !== 'agent' || !user.agent) {
+        return NextResponse.json(
+          { error: 'Invalid agent login code' },
+          { status: 401 }
+        );
+      }
+    } else if (validatedData.loginCode && !validatedData.email && !validatedData.password && !validatedData.isAgent) {
       user = await db.query.users.findFirst({
         where: and(
           eq(users.loginCode, validatedData.loginCode),
@@ -38,8 +64,7 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
-    } 
-    else if (validatedData.email && validatedData.password && !validatedData.loginCode) {
+    } else if (validatedData.email && validatedData.password && !validatedData.loginCode) {
       user = await db.query.users.findFirst({
         where: and(
           eq(users.email, validatedData.email),
@@ -64,8 +89,7 @@ export async function POST(request: NextRequest) {
           { status: 401 }
         );
       }
-    } 
-    else if (validatedData.email && validatedData.loginCode && !validatedData.password) {
+    } else if (validatedData.email && validatedData.loginCode && !validatedData.password) {
       user = await db.query.users.findFirst({
         where: and(
           eq(users.email, validatedData.email),
