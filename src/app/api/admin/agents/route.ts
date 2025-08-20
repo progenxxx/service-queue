@@ -1,3 +1,4 @@
+// src/app/api/admin/agents/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
@@ -11,6 +12,19 @@ const createAgentSchema = z.object({
   lastName: z.string().min(1, 'Last name is required'),
   email: z.string().email('Invalid email address'),
   assignedCompanyIds: z.array(z.string()).optional().default([]),
+});
+
+const updateAgentSchema = z.object({
+  agentId: z.string().min(1, 'Agent ID is required'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+  loginCode: z.string().min(7, 'Login code must be at least 7 characters'),
+  assignedCompanyIds: z.array(z.string()).optional().default([]),
+});
+
+const deleteAgentSchema = z.object({
+  agentId: z.string().min(1, 'Agent ID is required'),
 });
 
 type CompanyData = {
@@ -67,14 +81,8 @@ export const GET = requireRole(['super_admin'])(async () => {
 
     return NextResponse.json({ agents: agentsWithCompanies });
   } catch (error) {
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: 'Internal server error', details: error.message },
-        { status: 500 }
-      );
-    }
     return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
@@ -141,8 +149,6 @@ export const POST = requireRole(['super_admin'])(async (req: NextRequest) => {
       })
       .returning();
 
-    // 🔹 Removed email notification for now
-
     return NextResponse.json({
       success: true,
       agent: {
@@ -165,20 +171,126 @@ export const POST = requireRole(['super_admin'])(async (req: NextRequest) => {
       );
     }
 
-    if (error instanceof Error) {
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
+});
+
+export const PUT = requireRole(['super_admin'])(async (req: NextRequest) => {
+  try {
+    const body = await req.json();
+    const validatedData = updateAgentSchema.parse(body);
+
+    const existingAgent = await db.query.agents.findFirst({
+      where: eq(agents.id, validatedData.agentId),
+      with: {
+        user: true,
+      },
+    });
+
+    if (!existingAgent) {
       return NextResponse.json(
-        {
-          error: 'Internal server error',
-          details:
-            process.env.NODE_ENV === 'development' ? error.message : undefined,
-        },
-        { status: 500 }
+        { error: 'Agent not found' },
+        { status: 404 }
       );
     }
 
-    return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
-      { status: 500 }
-    );
+    if (validatedData.email !== existingAgent.user.email) {
+      const existingUser = await db.query.users.findFirst({
+        where: eq(users.email, validatedData.email),
+      });
+
+      if (existingUser && existingUser.id !== existingAgent.user.id) {
+        return NextResponse.json(
+          { error: 'A user with this email already exists' },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (validatedData.loginCode !== existingAgent.user.loginCode) {
+      const existingCode = await db.query.users.findFirst({
+        where: eq(users.loginCode, validatedData.loginCode),
+      });
+
+      if (existingCode && existingCode.id !== existingAgent.user.id) {
+        return NextResponse.json(
+          { error: 'This login code is already in use' },
+          { status: 400 }
+        );
+      }
+    }
+
+    await db.update(users)
+      .set({
+        firstName: validatedData.firstName,
+        lastName: validatedData.lastName,
+        email: validatedData.email,
+        loginCode: validatedData.loginCode,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, existingAgent.user.id));
+
+    await db.update(agents)
+      .set({
+        assignedCompanyIds: validatedData.assignedCompanyIds,
+        updatedAt: new Date(),
+      })
+      .where(eq(agents.id, validatedData.agentId));
+
+    return NextResponse.json({
+      success: true,
+      message: `Agent "${validatedData.firstName} ${validatedData.lastName}" updated successfully`,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+});
+
+export const DELETE = requireRole(['super_admin'])(async (req: NextRequest) => {
+  try {
+    const body = await req.json();
+    const validatedData = deleteAgentSchema.parse(body);
+
+    const existingAgent = await db.query.agents.findFirst({
+      where: eq(agents.id, validatedData.agentId),
+      with: {
+        user: true,
+      },
+    });
+
+    if (!existingAgent) {
+      return NextResponse.json(
+        { error: 'Agent not found' },
+        { status: 404 }
+      );
+    }
+
+    await db.delete(agents).where(eq(agents.id, validatedData.agentId));
+    
+    await db.delete(users).where(eq(users.id, existingAgent.user.id));
+
+    return NextResponse.json({
+      success: true,
+      message: `Agent "${existingAgent.user.firstName} ${existingAgent.user.lastName}" deleted successfully`,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: 'Invalid request data', details: error.issues },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 });

@@ -1,3 +1,4 @@
+// src/app/admin/agents/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -16,9 +17,7 @@ import {
   Users,
   Plus,
   Trash2,
-  RotateCcw,
-  Copy,
-  Check
+  RotateCcw
 } from 'lucide-react';
 
 interface Agent {
@@ -74,7 +73,6 @@ export default function AgentManagementPage() {
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [showDetailsForm, setShowDetailsForm] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [isTableTransitioning, setIsTableTransitioning] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -103,10 +101,12 @@ export default function AgentManagementPage() {
       const response = await fetch('/api/admin/agents');
       if (response.ok) {
         const data = await response.json();
-        setAgents(data.agents);
+        setAgents(data.agents || []);
+      } else {
+        setAgents([]);
       }
     } catch (error) {
-      console.error('Failed to fetch agents:', error);
+      setAgents([]);
     } finally {
       setLoading(false);
     }
@@ -117,10 +117,12 @@ export default function AgentManagementPage() {
       const response = await fetch('/api/admin/companies');
       if (response.ok) {
         const data = await response.json();
-        setCompanies(data.companies);
+        setCompanies(data.companies || []);
+      } else {
+        setCompanies([]);
       }
     } catch (error) {
-      console.error('Failed to fetch companies:', error);
+      setCompanies([]);
     }
   };
 
@@ -132,7 +134,7 @@ export default function AgentManagementPage() {
         setRecentActivity(data.activities || []);
       }
     } catch (error) {
-      console.error('Failed to fetch recent activity:', error);
+      setRecentActivity([]);
     }
   };
 
@@ -147,6 +149,12 @@ export default function AgentManagementPage() {
 
   const handleAddAgent = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
     try {
       const response = await fetch('/api/admin/agents', {
         method: 'POST',
@@ -155,23 +163,17 @@ export default function AgentManagementPage() {
       });
 
       if (response.ok) {
+        const result = await response.json();
         setShowAddAgent(false);
         setFormData({ firstName: '', lastName: '', email: '', assignedCompanyIds: [] });
-        fetchAgents();
-        alert('Agent created successfully!');
+        await fetchAgents();
+        alert(result.message || 'Agent created successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to create agent');
       }
     } catch (error) {
-      console.error('Failed to add agent:', error);
-    }
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedCode(text);
-      setTimeout(() => setCopiedCode(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy code:', error);
+      alert('Failed to add agent. Please try again.');
     }
   };
 
@@ -217,27 +219,49 @@ export default function AgentManagementPage() {
     if (!selectedAgent) return;
 
     try {
-      // Here you would typically call an API to update the agent details
-      // For now, we'll just simulate success
-      alert('Agent details updated successfully');
-      handleBackFromDetails();
+      const response = await fetch('/api/admin/agents', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agentId: selectedAgent.id,
+          ...editableDetails
+        }),
+      });
+
+      if (response.ok) {
+        await fetchAgents();
+        alert('Agent details updated successfully');
+        handleBackFromDetails();
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to update agent details');
+      }
     } catch (error) {
-      console.error('Failed to save agent details:', error);
       alert('Failed to save agent details');
     }
   };
 
   const handleDeleteAgent = async (agentId: string) => {
-    if (confirm('Are you sure you want to delete this agent?')) {
-      try {
-        // Here you would call the delete API
-        console.log('Delete agent:', agentId);
+    if (!confirm('Are you sure you want to delete this agent?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/agents', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentId }),
+      });
+
+      if (response.ok) {
+        await fetchAgents();
         alert('Agent deleted successfully');
-        fetchAgents();
-      } catch (error) {
-        console.error('Failed to delete agent:', error);
-        alert('Failed to delete agent');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete agent');
       }
+    } catch (error) {
+      alert('Failed to delete agent');
     }
   };
 
@@ -265,6 +289,15 @@ export default function AgentManagementPage() {
             <h1 className="text-3xl font-bold text-gray-900">
               {showDetailsForm ? 'Agent Details' : 'Agents'}
             </h1>
+            {showDetailsForm && (
+              <Button 
+                onClick={handleBackFromDetails}
+                variant="outline"
+                className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
+              >
+                ← Back to Agents
+              </Button>
+            )}
           </div>
           
           {!showDetailsForm && !showAddAgent && (
@@ -286,7 +319,6 @@ export default function AgentManagementPage() {
           )}
         </div>
 
-        {/* Show forms and other content only when NOT in Add Agent mode */}
         {!showAddAgent && (
           <div className={`transition-all duration-300 ease-in-out ${
             isTableTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'
@@ -294,7 +326,6 @@ export default function AgentManagementPage() {
             {showDetailsForm ? (
               <div className="w-full">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Agent Details Card */}
                   <Card className="shadow-sm border-0">
                     <CardContent className="p-8">
                       <h3 className="text-xl font-bold text-gray-900 mb-6">Agent Details</h3>
@@ -421,7 +452,6 @@ export default function AgentManagementPage() {
                     </CardContent>
                   </Card>
                   
-                  {/* Recent Activity Card */}
                   <Card className="shadow-sm border-0">
                     <CardContent className="p-8">
                       <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h3>
@@ -490,7 +520,10 @@ export default function AgentManagementPage() {
                               </TableCell>
                               <TableCell className="py-4 px-6 border-0">
                                 <div className="text-gray-600">
-                                  Company Name
+                                  {agent.assignedCompanies && agent.assignedCompanies.length > 0 
+                                    ? agent.assignedCompanies.map(c => c.companyName).join(', ')
+                                    : 'No companies assigned'
+                                  }
                                 </div>
                               </TableCell>
                               <TableCell className="text-gray-600 py-4 px-6 border-0">
@@ -534,13 +567,19 @@ export default function AgentManagementPage() {
           </div>
         )}
 
-        {/* Add Agent Form - Only show this when showAddAgent is true */}
         {showAddAgent && (
           <div className="w-full max-w-2xl">
             <Card className="shadow-sm border-0">
               <CardContent className="p-8">
-                <div className="mb-6">
+                <div className="mb-6 flex items-center justify-between">
                   <h2 className="text-2xl font-bold text-gray-900">Agent User</h2>
+                  <Button 
+                    onClick={handleBackToAgents}
+                    variant="outline"
+                    className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
+                  >
+                    ← Back to Agents
+                  </Button>
                 </div>
                 
                 <form onSubmit={handleAddAgent} className="space-y-6">
@@ -636,27 +675,6 @@ export default function AgentManagementPage() {
                         })}
                       </div>
                     )}
-                  </div>
-
-                  <div>
-                    <Label htmlFor="loginCode" className="text-sm font-medium text-gray-700 mb-2 block">
-                      Login Code
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        id="loginCode"
-                        value={generateAgentCode()}
-                        readOnly
-                        className="h-12 pr-12 bg-gray-50"
-                        maxLength={7}
-                      />
-                      <button
-                        type="button"
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        <RotateCcw className="h-5 w-5" />
-                      </button>
-                    </div>
                   </div>
                   
                   <div className="pt-4 flex space-x-4">

@@ -1,3 +1,4 @@
+// src/app/admin/customers/requests/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -39,13 +40,17 @@ interface Company {
 
 interface Agent {
   id: string;
-  userId: string;
-  user: {
+  firstName: string;
+  lastName: string;
+  email: string;
+  loginCode: string;
+  assignedCompanyIds: string[];
+  isActive: boolean;
+  createdAt: string;
+  assignedCompanies?: Array<{
     id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
+    companyName: string;
+  }>;
 }
 
 interface NoteLog {
@@ -84,6 +89,7 @@ export default function AdminAllRequestsPage() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [noteLogs, setNoteLogs] = useState<NoteLog[]>([]);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
@@ -91,69 +97,102 @@ export default function AdminAllRequestsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch companies
-        const companiesResponse = await fetch('/api/admin/companies');
-        if (companiesResponse.ok) {
-          const companiesData = await companiesResponse.json();
-          const validCompanies = (companiesData.companies || []).filter(
-            (company: Company) =>
-              company &&
-              typeof company.id === 'string' &&
-              typeof company.companyName === 'string' &&
-              typeof company.primaryContact === 'string'
-          );
-          setCompanies(validCompanies);
-        } else {
-          console.error('Failed to fetch companies');
-          setCompanies([]);
-        }
-
-        // Fetch agents
-        const agentsResponse = await fetch('/api/admin/agents');
-        if (agentsResponse.ok) {
-          const agentsData = await agentsResponse.json();
-          const validAgents = (agentsData.agents || []).filter(
-            (agent: Agent) =>
-              agent &&
-              agent.user &&
-              typeof agent.id === 'string' &&
-              typeof agent.userId === 'string' &&
-              typeof agent.user.firstName === 'string' &&
-              typeof agent.user.lastName === 'string'
-          );
-          setAgents(validAgents);
-        } else {
-          console.error('Failed to fetch agents');
-          setAgents([]);
-        }
-
-        // Fetch current user
-        const currentUserResponse = await fetch('/api/auth/me');
-        if (currentUserResponse.ok) {
-          const currentUserData = await currentUserResponse.json();
-          if (currentUserData.user) {
-            setCurrentUser(currentUserData.user);
-            setFormData((prev) => ({
-              ...prev,
-              assignedById: currentUserData.user.id,
-            }));
-          }
-        } else {
-          console.error('Failed to fetch current user');
-        }
-
-        // Fetch note logs
-        await fetchNoteLogs();
+        await Promise.all([
+          fetchCompanies(),
+          fetchAgents(),
+          fetchUsers(),
+          fetchCurrentUser(),
+          fetchNoteLogs()
+        ]);
       } catch (error) {
         console.error('Error fetching data:', error);
-        setCompanies([]);
-        setAgents([]);
-        setNoteLogs([]);
       }
     };
 
     fetchData();
   }, []);
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch('/api/admin/companies');
+      if (response.ok) {
+        const data = await response.json();
+        const validCompanies = (data.companies || []).filter(
+          (company: Company) =>
+            company &&
+            typeof company.id === 'string' &&
+            typeof company.companyName === 'string' &&
+            typeof company.primaryContact === 'string'
+        );
+        setCompanies(validCompanies);
+      } else {
+        setCompanies([]);
+      }
+    } catch (error) {
+      setCompanies([]);
+    }
+  };
+
+  const fetchAgents = async () => {
+    try {
+      const response = await fetch('/api/admin/agents');
+      if (response.ok) {
+        const data = await response.json();
+        const validAgents = (data.agents || []).filter(
+          (agent: Agent) =>
+            agent &&
+            typeof agent.id === 'string' &&
+            typeof agent.firstName === 'string' &&
+            typeof agent.lastName === 'string' &&
+            agent.isActive === true
+        );
+        setAgents(validAgents);
+      } else {
+        setAgents([]);
+      }
+    } catch (error) {
+      setAgents([]);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/users');
+      if (response.ok) {
+        const data = await response.json();
+        const validUsers = (data.users || []).filter(
+          (user: User) =>
+            user &&
+            typeof user.id === 'string' &&
+            typeof user.firstName === 'string' &&
+            typeof user.lastName === 'string'
+        );
+        setUsers(validUsers);
+      } else {
+        setUsers([]);
+      }
+    } catch (error) {
+      setUsers([]);
+    }
+  };
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setCurrentUser(data.user);
+          setFormData((prev) => ({
+            ...prev,
+            assignedById: data.user.id,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+    }
+  };
 
   const fetchNoteLogs = async () => {
     try {
@@ -170,11 +209,9 @@ export default function AdminAllRequestsPage() {
         );
         setNoteLogs(validNotes);
       } else {
-        console.error('Failed to fetch note logs');
         setNoteLogs([]);
       }
     } catch (error) {
-      console.error('Error fetching note logs:', error);
       setNoteLogs([]);
     }
   };
@@ -227,7 +264,6 @@ export default function AdminAllRequestsPage() {
         alert(`Failed to add note: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error adding note:', error);
       alert('Error adding note');
     } finally {
       setIsAddingNote(false);
@@ -290,7 +326,6 @@ export default function AdminAllRequestsPage() {
         alert(`Failed to create service request: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error creating service request:', error);
       alert('Error creating service request');
     } finally {
       setIsSubmitting(false);
@@ -314,6 +349,30 @@ export default function AdminAllRequestsPage() {
       minute: '2-digit',
     });
   };
+
+  const getAllAssignableUsers = () => {
+    const agentUsers = agents.map(agent => ({
+      id: agent.id, // Use agent ID, backend will handle the mapping
+      userId: agent.id, // Store agent ID for backend mapping
+      name: `${agent.firstName} ${agent.lastName}`,
+      type: 'Agent',
+      email: agent.email
+    }));
+
+    const superAdminUsers = users
+      .filter(user => user.role === 'super_admin')
+      .map(user => ({
+        id: user.id, // Use user ID directly
+        userId: user.id,
+        name: `${user.firstName} ${user.lastName}`,
+        type: 'Super Admin',
+        email: user.email
+      }));
+
+    return [...agentUsers, ...superAdminUsers];
+  };
+
+  const assignableUsers = getAllAssignableUsers();
 
   return (
     <DashboardLayout navigation={navigation} title="">
@@ -425,7 +484,7 @@ export default function AdminAllRequestsPage() {
                                 value={company.primaryContact}
                                 className="bg-white hover:bg-gray-50"
                               >
-                                {company.primaryContact}
+                                {company.primaryContact} - {company.companyName}
                               </SelectItem>
                             ))
                           ) : (
@@ -446,26 +505,31 @@ export default function AdminAllRequestsPage() {
                         onValueChange={(value) => setFormData({...formData, assignedById: value})}
                       >
                         <SelectTrigger className="border-gray-200 bg-white">
-                          <SelectValue placeholder="Select an agent" />
+                          <SelectValue placeholder="Select an assignee" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          {agents.length > 0 ? (
-                            agents.map((agent) => (
+                          {assignableUsers.length > 0 ? (
+                            assignableUsers.map((user) => (
                               <SelectItem 
-                                key={agent.id} 
-                                value={agent.userId}
+                                key={user.id} 
+                                value={user.id}
                                 className="bg-white hover:bg-gray-50"
                               >
-                                {agent.user.firstName} {agent.user.lastName}
+                                {user.name} ({user.type})
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="no-agents" disabled className="text-gray-400">
-                              No agents available
+                            <SelectItem value="no-users" disabled className="text-gray-400">
+                              No assignable users available
                             </SelectItem>
                           )}
                         </SelectContent>
                       </Select>
+                      {assignableUsers.length === 0 && (
+                        <p className="mt-1 text-xs text-red-500">
+                          No agents or admin users found. Please create agents first.
+                        </p>
+                      )}
                     </div>
 
                     <div>

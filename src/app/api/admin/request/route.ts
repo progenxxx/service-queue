@@ -1,8 +1,9 @@
+// src/app/api/admin/request/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { serviceRequests, companies, users, requestNotes } from '@/lib/db/schema';
+import { serviceRequests, companies, users, requestNotes, agents } from '@/lib/db/schema';
 import { desc, eq } from 'drizzle-orm';
 import { emailService } from '@/lib/email/sendgrid';
 
@@ -55,10 +56,10 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       const serviceQueueCategory = formData.get('serviceQueueCategory') as string;
       const dueDateStr = formData.get('dueDate') as string;
       const serviceQueueId = formData.get('serviceQueueId') as string || generateServiceQueueId();
-      const assignedById = formData.get('assignedById') as string;
+      const assignedByIdRaw = formData.get('assignedById') as string;
       const companyId = formData.get('companyId') as string;
 
-      if (!client || !serviceRequestNarrative || !assignedById) {
+      if (!client || !serviceRequestNarrative || !assignedByIdRaw) {
         return NextResponse.json(
           { error: 'Client, service request narrative, and assigned by are required' },
           { status: 400 }
@@ -74,6 +75,37 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
           { error: 'Authentication required' },
           { status: 401 }
         );
+      }
+
+      let finalAssignedById = assignedByIdRaw;
+
+      // Check if the assignedByIdRaw is an agent ID, if so get the user ID
+      const agentCheck = await db.query.agents.findFirst({
+        where: eq(agents.id, assignedByIdRaw),
+        with: {
+          user: {
+            columns: {
+              id: true,
+            },
+          },
+        },
+      });
+
+      if (agentCheck) {
+        // It's an agent ID, use the associated user ID
+        finalAssignedById = agentCheck.user.id;
+      } else {
+        // Check if it's a valid user ID
+        const userCheck = await db.query.users.findFirst({
+          where: eq(users.id, assignedByIdRaw),
+        });
+
+        if (!userCheck) {
+          return NextResponse.json(
+            { error: 'Invalid assigned by user' },
+            { status: 400 }
+          );
+        }
       }
 
       // Determine the final company ID based on user role
@@ -122,7 +154,7 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         companyId: finalCompanyId,
         serviceRequestNarrative,
         serviceQueueCategory: serviceQueueCategory as 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'other',
-        assignedById,
+        assignedById: finalAssignedById,
         assignedToId,
         dueDate,
         taskStatus: 'new',
@@ -131,7 +163,7 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       if (primaryContactEmail && assignedToId) {
         try {
           const requestCreator = await db.query.users.findFirst({
-            where: eq(users.id, assignedById),
+            where: eq(users.id, finalAssignedById),
             columns: {
               firstName: true,
               lastName: true,
