@@ -10,18 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { 
-  Building2, 
-  UserCheck, 
-  BarChart3,
-  Settings,
-  Users,
-  FileText,
-  Upload,
-  X,
-  Send,
-  Loader2
-} from 'lucide-react';
+import { Building2, UserCheck, BarChart3, Settings, Users, FileText, Upload, X, Send, Loader2 } from 'lucide-react';
 
 const navigation = [
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
@@ -88,12 +77,7 @@ export default function AdminAllRequestsPage() {
     companyId: '',
   });
 
-  const [noteData, setNoteData] = useState({
-    noteTitle: '',
-    noteDetails: '',
-    emailAddress: ''
-  });
-
+  const [noteData, setNoteData] = useState({ noteTitle: '', noteDetails: '', emailAddress: '' });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -107,31 +91,64 @@ export default function AdminAllRequestsPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Fetch companies
         const companiesResponse = await fetch('/api/admin/companies');
         if (companiesResponse.ok) {
           const companiesData = await companiesResponse.json();
-          setCompanies(companiesData.companies || []);
+          const validCompanies = (companiesData.companies || []).filter(
+            (company: Company) =>
+              company &&
+              typeof company.id === 'string' &&
+              typeof company.companyName === 'string' &&
+              typeof company.primaryContact === 'string'
+          );
+          setCompanies(validCompanies);
+        } else {
+          console.error('Failed to fetch companies');
+          setCompanies([]);
         }
 
+        // Fetch agents
         const agentsResponse = await fetch('/api/admin/agents');
         if (agentsResponse.ok) {
           const agentsData = await agentsResponse.json();
-          setAgents(agentsData.agents || []);
+          const validAgents = (agentsData.agents || []).filter(
+            (agent: Agent) =>
+              agent &&
+              agent.user &&
+              typeof agent.id === 'string' &&
+              typeof agent.userId === 'string' &&
+              typeof agent.user.firstName === 'string' &&
+              typeof agent.user.lastName === 'string'
+          );
+          setAgents(validAgents);
+        } else {
+          console.error('Failed to fetch agents');
+          setAgents([]);
         }
 
+        // Fetch current user
         const currentUserResponse = await fetch('/api/auth/me');
         if (currentUserResponse.ok) {
           const currentUserData = await currentUserResponse.json();
-          setCurrentUser(currentUserData.user);
-          setFormData(prev => ({
-            ...prev,
-            assignedById: currentUserData.user.id,
-          }));
+          if (currentUserData.user) {
+            setCurrentUser(currentUserData.user);
+            setFormData((prev) => ({
+              ...prev,
+              assignedById: currentUserData.user.id,
+            }));
+          }
+        } else {
+          console.error('Failed to fetch current user');
         }
 
+        // Fetch note logs
         await fetchNoteLogs();
       } catch (error) {
-        console.error('Failed to fetch data:', error);
+        console.error('Error fetching data:', error);
+        setCompanies([]);
+        setAgents([]);
+        setNoteLogs([]);
       }
     };
 
@@ -143,10 +160,22 @@ export default function AdminAllRequestsPage() {
       const response = await fetch('/api/admin/request');
       if (response.ok) {
         const data = await response.json();
-        setNoteLogs(data.notes || []);
+        const validNotes = (data.notes || []).filter(
+          (note: NoteLog) =>
+            note &&
+            note.id &&
+            note.author &&
+            note.request &&
+            typeof note.noteContent === 'string'
+        );
+        setNoteLogs(validNotes);
+      } else {
+        console.error('Failed to fetch note logs');
+        setNoteLogs([]);
       }
     } catch (error) {
-      console.error('Failed to fetch note logs:', error);
+      console.error('Error fetching note logs:', error);
+      setNoteLogs([]);
     }
   };
 
@@ -163,12 +192,16 @@ export default function AdminAllRequestsPage() {
   };
 
   const removeFile = (index: number) => {
-    setSelectedFiles(files => files.filter((_, i) => i !== index));
+    setSelectedFiles((files) => files.filter((_, i) => i !== index));
   };
 
   const handleAddNote = async () => {
     if (!noteData.noteDetails.trim() || !noteData.emailAddress.trim()) {
       alert('Please fill in the note details and email address');
+      return;
+    }
+    if (!currentRequestId) {
+      alert('Please create a service request first');
       return;
     }
 
@@ -185,18 +218,13 @@ export default function AdminAllRequestsPage() {
       });
 
       const result = await response.json();
-
       if (response.ok) {
         setShowNoteDialog(false);
-        setNoteData({
-          noteTitle: '',
-          noteDetails: '',
-          emailAddress: ''
-        });
+        setNoteData({ noteTitle: '', noteDetails: '', emailAddress: '' });
         alert('Note added and email sent successfully!');
         await fetchNoteLogs();
       } else {
-        alert(`Failed to add note: ${result.error}`);
+        alert(`Failed to add note: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error adding note:', error);
@@ -208,8 +236,13 @@ export default function AdminAllRequestsPage() {
 
   const handleSubmitRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmitting(true);
 
+    if (!formData.client || !formData.serviceObjective || !formData.assignedById) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const formDataToSend = new FormData();
       formDataToSend.append('client', formData.client);
@@ -217,16 +250,15 @@ export default function AdminAllRequestsPage() {
       formDataToSend.append('serviceQueueCategory', formData.serviceQueueCategory);
       formDataToSend.append('serviceQueueId', formData.serviceQueueId);
       formDataToSend.append('assignedById', formData.assignedById);
-      
+
       if (formData.companyId) {
         formDataToSend.append('companyId', formData.companyId);
       }
-      
       if (formData.dueDate) {
         formDataToSend.append('dueDate', formData.dueDate);
       }
 
-      selectedFiles.forEach(file => {
+      selectedFiles.forEach((file) => {
         formDataToSend.append('files', file);
       });
 
@@ -236,11 +268,10 @@ export default function AdminAllRequestsPage() {
       });
 
       const result = await response.json();
-
       if (response.ok) {
-        const newRequestId = result.request.id;
+        const newRequestId = result.request?.id;
         setCurrentRequestId(newRequestId);
-        
+
         setFormData({
           serviceQueueId: generateServiceQueueId(),
           taskStatus: 'new',
@@ -251,13 +282,12 @@ export default function AdminAllRequestsPage() {
           serviceQueueCategory: '',
           companyId: '',
         });
+
         setSelectedFiles([]);
-        
         await fetchNoteLogs();
-        
         alert('Service request created successfully!');
       } else {
-        alert(`Failed to create service request: ${result.error}`);
+        alert(`Failed to create service request: ${result.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating service request:', error);
@@ -281,7 +311,7 @@ export default function AdminAllRequestsPage() {
       day: 'numeric',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
 
@@ -356,7 +386,7 @@ export default function AdminAllRequestsPage() {
 
                     <div>
                       <Label htmlFor="serviceObjective" className="text-sm font-medium text-gray-700 mb-2 block">
-                        Service Objective and Narrative
+                        Service Objective and Narrative *
                       </Label>
                       <Textarea
                         id="serviceObjective"
@@ -371,51 +401,69 @@ export default function AdminAllRequestsPage() {
 
                     <div>
                       <Label htmlFor="client" className="text-sm font-medium text-gray-700 mb-2 block">
-                        Client
+                        Client *
                       </Label>
-                      <Select value={formData.client} onValueChange={(value) => {
-                        const selectedCompany = companies.find(c => c.primaryContact === value);
-                        setFormData({
-                          ...formData, 
-                          client: value,
-                          companyId: selectedCompany?.id || ''
-                        });
-                      }}>
+                      <Select 
+                        value={formData.client} 
+                        onValueChange={(value) => {
+                          const selectedCompany = companies.find(c => c.primaryContact === value);
+                          setFormData({
+                            ...formData, 
+                            client: value,
+                            companyId: selectedCompany?.id || ''
+                          });
+                        }}
+                      >
                         <SelectTrigger className="border-gray-200 bg-white">
                           <SelectValue placeholder="Select a client" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          {companies.map((company) => (
-                            <SelectItem 
-                              key={company.id} 
-                              value={company.primaryContact}
-                              className="bg-white hover:bg-gray-50"
-                            >
-                              {company.primaryContact}
+                          {companies.length > 0 ? (
+                            companies.map((company) => (
+                              <SelectItem 
+                                key={company.id} 
+                                value={company.primaryContact}
+                                className="bg-white hover:bg-gray-50"
+                              >
+                                {company.primaryContact}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-clients" disabled className="text-gray-400">
+                              No clients available
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
 
                     <div>
                       <Label htmlFor="assignedById" className="text-sm font-medium text-gray-700 mb-2 block">
-                        The Person Who Assigned (Assigned By)
+                        The Person Who Assigned (Assigned By) *
                       </Label>
-                      <Select value={formData.assignedById} onValueChange={(value) => setFormData({...formData, assignedById: value})}>
+                      <Select 
+                        value={formData.assignedById} 
+                        onValueChange={(value) => setFormData({...formData, assignedById: value})}
+                      >
                         <SelectTrigger className="border-gray-200 bg-white">
                           <SelectValue placeholder="Select an agent" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          {agents.map((agent) => (
-                            <SelectItem 
-                              key={agent.id} 
-                              value={agent.userId}
-                              className="bg-white hover:bg-gray-50"
-                            >
-                              {agent.user.firstName} {agent.user.lastName}
+                          {agents.length > 0 ? (
+                            agents.map((agent) => (
+                              <SelectItem 
+                                key={agent.id} 
+                                value={agent.userId}
+                                className="bg-white hover:bg-gray-50"
+                              >
+                                {agent.user.firstName} {agent.user.lastName}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-agents" disabled className="text-gray-400">
+                              No agents available
                             </SelectItem>
-                          ))}
+                          )}
                         </SelectContent>
                       </Select>
                     </div>
@@ -429,8 +477,23 @@ export default function AdminAllRequestsPage() {
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="client_service_cancel_non_renewal" className="bg-white hover:bg-gray-50">
-                            Client Service - Cancel / Non Renewal Notice
+                          <SelectItem value="policy_inquiry" className="bg-white hover:bg-gray-50">
+                            Policy Inquiry
+                          </SelectItem>
+                          <SelectItem value="claims_processing" className="bg-white hover:bg-gray-50">
+                            Claims Processing
+                          </SelectItem>
+                          <SelectItem value="account_update" className="bg-white hover:bg-gray-50">
+                            Account Update
+                          </SelectItem>
+                          <SelectItem value="technical_support" className="bg-white hover:bg-gray-50">
+                            Technical Support
+                          </SelectItem>
+                          <SelectItem value="billing_inquiry" className="bg-white hover:bg-gray-50">
+                            Billing Inquiry
+                          </SelectItem>
+                          <SelectItem value="other" className="bg-white hover:bg-gray-50">
+                            Other
                           </SelectItem>
                         </SelectContent>
                       </Select>
@@ -561,7 +624,7 @@ export default function AdminAllRequestsPage() {
 
                       <div>
                         <Label htmlFor="noteDetails" className="text-sm font-medium text-gray-700 mb-2 block">
-                          Note Details
+                          Note Details *
                         </Label>
                         <Textarea
                           id="noteDetails"
@@ -576,7 +639,7 @@ export default function AdminAllRequestsPage() {
 
                       <div>
                         <Label htmlFor="emailAddress" className="text-sm font-medium text-gray-700 mb-2 block">
-                          Email Address
+                          Email Address *
                         </Label>
                         <Input
                           id="emailAddress"
@@ -632,7 +695,7 @@ export default function AdminAllRequestsPage() {
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>
-                            By: {note.author.firstName} {note.author.lastName}
+                            By: {note.author?.firstName || 'Unknown'} {note.author?.lastName || ''}
                           </span>
                           <span>{formatDate(note.createdAt)}</span>
                         </div>

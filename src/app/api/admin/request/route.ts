@@ -65,6 +65,18 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         );
       }
 
+      const currentUserId = request.headers.get('x-user-id');
+      const currentUserRole = request.headers.get('x-user-role');
+      const currentUserCompanyId = request.headers.get('x-company-id');
+
+      if (!currentUserId) {
+        return NextResponse.json(
+          { error: 'Authentication required' },
+          { status: 401 }
+        );
+      }
+
+      // Determine the final company ID based on user role
       let finalCompanyId = companyId;
       if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
         finalCompanyId = currentUserCompanyId;
@@ -78,22 +90,6 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       }
 
       const dueDate = dueDateStr ? new Date(dueDateStr) : null;
-
-      const currentUserId = request.headers.get('x-user-id');
-      const currentUserRole = request.headers.get('x-user-role');
-      const currentUserCompanyId = request.headers.get('x-company-id');
-
-      if (!currentUserId) {
-        return NextResponse.json(
-          { error: 'Authentication required' },
-          { status: 401 }
-        );
-      }
-
-      let finalCompanyId = companyId;
-      if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
-        finalCompanyId = currentUserCompanyId;
-      }
 
       let assignedToId = null;
       let primaryContactEmail = null;

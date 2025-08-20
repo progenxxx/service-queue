@@ -5,7 +5,6 @@ import { users, agents, companies } from '@/lib/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { generateLoginCode } from '@/lib/auth/utils-node';
-import { emailService } from '@/lib/email/sendgrid';
 
 const createAgentSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
@@ -142,20 +141,7 @@ export const POST = requireRole(['super_admin'])(async (req: NextRequest) => {
       })
       .returning();
 
-    try {
-      await emailService.sendAgentWelcome(newUser.email, {
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        loginCode,
-        companyName: 'Service Queue Platform',
-      });
-    } catch (emailError) {
-      if (emailError instanceof Error) {
-        console.error('Email sending failed:', emailError.message);
-      } else {
-        console.error('Email sending failed:', emailError);
-      }
-    }
+    // 🔹 Removed email notification for now
 
     return NextResponse.json({
       success: true,
