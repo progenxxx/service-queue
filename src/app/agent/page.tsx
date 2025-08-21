@@ -67,12 +67,12 @@ interface SummaryStats {
 }
 
 const navigation = [
-  { name: 'All Request', href: '/agent', icon: Home, current: true },
-  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: false },
+  { name: 'All Request', href: '/agent', icon: Home, current: false },
+  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: true },
   { name: 'Reports', href: '/agent/reports', icon: BarChart3, current: false },
 ];
 
-export default function AgentAllRequestsPage() {
+export default function AgentSummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -91,7 +91,7 @@ export default function AgentAllRequestsPage() {
   });
 
   useEffect(() => {
-    fetchAllRequests();
+    fetchMyRequests();
     fetchUsers();
   }, []);
 
@@ -140,16 +140,16 @@ export default function AgentAllRequestsPage() {
     setFilteredRequests(filtered);
   }, [requests, filters]);
 
-  const fetchAllRequests = async () => {
+  const fetchMyRequests = async () => {
     try {
-      const response = await fetch('/api/admin/summary');
+      const response = await fetch('/api/agent/summary');
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
         setSummaryStats(data.summary || null);
       }
     } catch (error) {
-      console.error('Failed to fetch requests data:', error);
+      console.error('Failed to fetch my requests data:', error);
     } finally {
       setLoading(false);
     }
@@ -217,7 +217,7 @@ export default function AgentAllRequestsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout navigation={navigation} title="All Requests">
+      <DashboardLayout navigation={navigation} title="">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#087055]"></div>
         </div>
@@ -226,10 +226,20 @@ export default function AgentAllRequestsPage() {
   }
 
   return (
-    <DashboardLayout navigation={navigation} title="All Requests">
+    <DashboardLayout navigation={navigation} title="">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">All Tasks</h1>
+        <div className="mb-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
+            <div className="ml-auto">
+              <Button
+                onClick={handleAddServiceRequest}
+                className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
+              >
+                Add Service Request
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-4 items-center py-4">
@@ -278,13 +288,6 @@ export default function AgentAllRequestsPage() {
               </SelectContent>
             </Select>
           </div>
-
-          <Button
-            onClick={handleAddServiceRequest}
-            className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
-          >
-            Add Service Request
-          </Button>
         </div>
 
         <Card className="shadow-sm border-0">
@@ -298,10 +301,10 @@ export default function AgentAllRequestsPage() {
                     <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Request Narrative</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Que Category</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned To:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On:</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned By</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -340,7 +343,7 @@ export default function AgentAllRequestsPage() {
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
-                            {request.assignedTo ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}` : 'Not Assigned'}
+                            {request.assignedBy.firstName} {request.assignedBy.lastName}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
@@ -363,7 +366,10 @@ export default function AgentAllRequestsPage() {
                   ) : (
                     <TableRow className="border-0">
                       <TableCell colSpan={9} className="text-center py-12 text-gray-500 border-0">
-                        No requests found matching your filters.
+                        {filters.search || filters.client || filters.status ? 
+                          'No requests found matching your filters.' : 
+                          'No requests assigned to you yet.'
+                        }
                       </TableCell>
                     </TableRow>
                   )}

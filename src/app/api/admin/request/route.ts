@@ -1,4 +1,3 @@
-// src/app/api/admin/request/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
@@ -56,12 +55,12 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       const serviceQueueCategory = formData.get('serviceQueueCategory') as string;
       const dueDateStr = formData.get('dueDate') as string;
       const serviceQueueId = formData.get('serviceQueueId') as string || generateServiceQueueId();
-      const assignedByIdRaw = formData.get('assignedById') as string;
+      const assignedToIdRaw = formData.get('assignedById') as string;
       const companyId = formData.get('companyId') as string;
 
-      if (!client || !serviceRequestNarrative || !assignedByIdRaw) {
+      if (!client || !serviceRequestNarrative || !assignedToIdRaw) {
         return NextResponse.json(
-          { error: 'Client, service request narrative, and assigned by are required' },
+          { error: 'Client, service request narrative, and assigned to are required' },
           { status: 400 }
         );
       }
@@ -77,11 +76,10 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         );
       }
 
-      let finalAssignedById = assignedByIdRaw;
+      let finalAssignedToId = assignedToIdRaw;
 
-      // Check if the assignedByIdRaw is an agent ID, if so get the user ID
       const agentCheck = await db.query.agents.findFirst({
-        where: eq(agents.id, assignedByIdRaw),
+        where: eq(agents.id, assignedToIdRaw),
         with: {
           user: {
             columns: {
@@ -92,23 +90,20 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       });
 
       if (agentCheck) {
-        // It's an agent ID, use the associated user ID
-        finalAssignedById = agentCheck.user.id;
+        finalAssignedToId = agentCheck.user.id;
       } else {
-        // Check if it's a valid user ID
         const userCheck = await db.query.users.findFirst({
-          where: eq(users.id, assignedByIdRaw),
+          where: eq(users.id, assignedToIdRaw),
         });
 
         if (!userCheck) {
           return NextResponse.json(
-            { error: 'Invalid assigned by user' },
+            { error: 'Invalid assigned to user' },
             { status: 400 }
           );
         }
       }
 
-      // Determine the final company ID based on user role
       let finalCompanyId = companyId;
       if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
         finalCompanyId = currentUserCompanyId;
@@ -123,62 +118,48 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
 
       const dueDate = dueDateStr ? new Date(dueDateStr) : null;
 
-      let assignedToId = null;
-      let primaryContactEmail = null;
-      
-      try {
-        const result = await db
-          .select({
-            userId: users.id,
-            userEmail: users.email,
-            userFirstName: users.firstName,
-            userLastName: users.lastName,
-            companyName: companies.companyName,
-          })
-          .from(companies)
-          .leftJoin(users, eq(companies.companyCode, users.loginCode))
-          .where(eq(companies.id, finalCompanyId))
-          .limit(1);
-
-        if (result.length > 0 && result[0].userId) {
-          assignedToId = result[0].userId;
-          primaryContactEmail = result[0].userEmail;
-        }
-      } catch (error) {
-        console.error('Error finding primary contact user:', error);
-      }
-
       const newRequest = await db.insert(serviceRequests).values({
         serviceQueueId,
         client,
         companyId: finalCompanyId,
         serviceRequestNarrative,
-        serviceQueueCategory: serviceQueueCategory as 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'other',
-        assignedById: finalAssignedById,
-        assignedToId,
+        serviceQueueCategory: serviceQueueCategory as 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'client_service_cancel_non_renewal' | 'other',
+        assignedById: currentUserId,
+        assignedToId: finalAssignedToId,
         dueDate,
         taskStatus: 'new',
       }).returning();
 
-      if (primaryContactEmail && assignedToId) {
+      if (finalAssignedToId) {
         try {
+          const assignedToUser = await db.query.users.findFirst({
+            where: eq(users.id, finalAssignedToId),
+            columns: {
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          });
+
           const requestCreator = await db.query.users.findFirst({
-            where: eq(users.id, finalAssignedById),
+            where: eq(users.id, currentUserId),
             columns: {
               firstName: true,
               lastName: true,
             },
           });
 
-          await emailService.sendNewRequest(primaryContactEmail, {
-            requestId: newRequest[0].id,
-            serviceQueueId: newRequest[0].serviceQueueId,
-            clientName: client,
-            requestTitle: serviceRequestNarrative,
-            category: serviceQueueCategory,
-            createdBy: requestCreator ? `${requestCreator.firstName} ${requestCreator.lastName}` : 'Unknown',
-            priority: dueDate ? 'High' : 'Normal',
-          });
+          if (assignedToUser) {
+            await emailService.sendNewRequest(assignedToUser.email, {
+              requestId: newRequest[0].id,
+              serviceQueueId: newRequest[0].serviceQueueId,
+              clientName: client,
+              requestTitle: serviceRequestNarrative,
+              category: serviceQueueCategory,
+              createdBy: requestCreator ? `${requestCreator.firstName} ${requestCreator.lastName}` : 'Unknown',
+              priority: dueDate ? 'High' : 'Normal',
+            });
+          }
         } catch (emailError) {
           console.error('Failed to send new request notification email:', emailError);
         }
@@ -192,7 +173,7 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       return NextResponse.json({ 
         message: 'Service request created successfully',
         request: newRequest[0],
-        assignedToId: assignedToId ? assignedToId : 'No primary contact found'
+        assignedToId: finalAssignedToId
       });
     } catch (error) {
       console.error('Failed to create service request:', error);

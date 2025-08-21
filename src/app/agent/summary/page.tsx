@@ -217,7 +217,7 @@ export default function AgentSummaryPage() {
 
   if (loading) {
     return (
-      <DashboardLayout navigation={navigation} title="My Queues">
+      <DashboardLayout navigation={navigation} title="">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#087055]"></div>
         </div>
@@ -226,69 +226,20 @@ export default function AgentSummaryPage() {
   }
 
   return (
-    <DashboardLayout navigation={navigation} title="My Queues">
+    <DashboardLayout navigation={navigation} title="">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">My Assigned Tasks</h1>
-        </div>
-
-        {/* Summary Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-600">Total Assigned</p>
-                  <p className="text-3xl font-bold text-blue-900">{summaryStats?.totalRequests || 0}</p>
-                </div>
-                <div className="bg-blue-500 p-3 rounded-full">
-                  <FileText className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-yellow-600">In Progress</p>
-                  <p className="text-3xl font-bold text-yellow-900">{summaryStats?.inProgressRequests || 0}</p>
-                </div>
-                <div className="bg-yellow-500 p-3 rounded-full">
-                  <Clock className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-600">Completed</p>
-                  <p className="text-3xl font-bold text-green-900">{summaryStats?.closedRequests || 0}</p>
-                </div>
-                <div className="bg-green-500 p-3 rounded-full">
-                  <CheckCircle2 className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-red-600">Overdue</p>
-                  <p className="text-3xl font-bold text-red-900">{summaryStats?.overdueRequests || 0}</p>
-                </div>
-                <div className="bg-red-500 p-3 rounded-full">
-                  <AlertTriangle className="h-6 w-6 text-white" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mb-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
+            <div className="ml-auto">
+              <Button
+                onClick={handleAddServiceRequest}
+                className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
+              >
+                Add Service Request
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-4 items-center py-4">
@@ -337,13 +288,6 @@ export default function AgentSummaryPage() {
               </SelectContent>
             </Select>
           </div>
-
-          <Button
-            onClick={handleAddServiceRequest}
-            className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
-          >
-            Add Service Request
-          </Button>
         </div>
 
         <Card className="shadow-sm border-0">
@@ -357,6 +301,7 @@ export default function AgentSummaryPage() {
                     <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Request Narrative</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Que Category</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned By</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On</TableHead>
@@ -398,6 +343,11 @@ export default function AgentSummaryPage() {
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
+                            {request.assignedBy.firstName} {request.assignedBy.lastName}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 px-6 border-0">
+                          <div className="text-gray-600">
                             {request.dueDate ? formatDate(request.dueDate) : 'No Due Date'}
                           </div>
                         </TableCell>
@@ -415,7 +365,7 @@ export default function AgentSummaryPage() {
                     ))
                   ) : (
                     <TableRow className="border-0">
-                      <TableCell colSpan={8} className="text-center py-12 text-gray-500 border-0">
+                      <TableCell colSpan={9} className="text-center py-12 text-gray-500 border-0">
                         {filters.search || filters.client || filters.status ? 
                           'No requests found matching your filters.' : 
                           'No requests assigned to you yet.'
