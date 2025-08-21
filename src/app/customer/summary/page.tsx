@@ -2,27 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  Building2, 
-  UserCheck, 
-  BarChart3,
-  Settings,
-  Users,
-  FileText,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Home,
-  Plus
-} from 'lucide-react';
+import { Building2, BarChart3, Settings } from 'lucide-react';
 
 interface ServiceRequest {
   id: string;
@@ -50,41 +36,19 @@ interface ServiceRequest {
   };
 }
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: string;
-}
-
-interface SummaryStats {
-  totalRequests: number;
-  newRequests: number;
-  openRequests: number;
-  inProgressRequests: number;
-  closedRequests: number;
-  overdueRequests: number;
-}
-
 const getNavigation = (userRole: string) => [
   { name: 'Create Request', href: '/customer', icon: Building2, current: false },
   { name: 'Summary', href: '/customer/summary', icon: Building2, current: true },
   { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
-  ...(userRole === 'customer_admin' ? [
-    { name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: false }
-  ] : [])
+  ...(userRole === 'customer_admin'
+    ? [{ name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: false }]
+    : [])
 ];
 
 export default function CustomerSummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [navigation, setNavigation] = useState(getNavigation('customer'));
 
   const [filters, setFilters] = useState({
@@ -99,14 +63,13 @@ export default function CustomerSummaryPage() {
   useEffect(() => {
     fetchCurrentUser();
     fetchSummaryData();
-    fetchUsers();
   }, []);
 
   useEffect(() => {
     let filtered = [...requests];
 
     if (filters.client) {
-      filtered = filtered.filter(request => 
+      filtered = filtered.filter(request =>
         request.client.toLowerCase().includes(filters.client.toLowerCase())
       );
     }
@@ -121,26 +84,23 @@ export default function CustomerSummaryPage() {
 
     if (filters.startDate) {
       const startDate = new Date(filters.startDate);
-      filtered = filtered.filter(request => 
-        new Date(request.createdAt) >= startDate
-      );
+      filtered = filtered.filter(request => new Date(request.createdAt) >= startDate);
     }
 
     if (filters.endDate) {
       const endDate = new Date(filters.endDate);
       endDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(request => 
-        new Date(request.createdAt) <= endDate
-      );
+      filtered = filtered.filter(request => new Date(request.createdAt) <= endDate);
     }
 
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(request => 
-        request.serviceQueueId.toLowerCase().includes(searchTerm) ||
-        request.client.toLowerCase().includes(searchTerm) ||
-        request.serviceRequestNarrative.toLowerCase().includes(searchTerm) ||
-        request.company.companyName.toLowerCase().includes(searchTerm)
+      filtered = filtered.filter(
+        request =>
+          request.serviceQueueId.toLowerCase().includes(searchTerm) ||
+          request.client.toLowerCase().includes(searchTerm) ||
+          request.serviceRequestNarrative.toLowerCase().includes(searchTerm) ||
+          request.company.companyName.toLowerCase().includes(searchTerm)
       );
     }
 
@@ -153,13 +113,10 @@ export default function CustomerSummaryPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
-          setCurrentUser(data.user);
           setNavigation(getNavigation(data.user.role));
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch current user:', error);
-    }
+    } catch {}
   };
 
   const fetchSummaryData = async () => {
@@ -168,41 +125,10 @@ export default function CustomerSummaryPage() {
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
-        setSummaryStats(data.summary || null);
       }
-    } catch (error) {
-      console.error('Failed to fetch summary data:', error);
-    } finally {
+    } catch {} finally {
       setLoading(false);
     }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/customer/agents');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.agents || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    }
-  };
-
-  const resetFilters = () => {
-    setFilters({
-      client: '',
-      assignedBy: '',
-      status: '',
-      startDate: '',
-      endDate: '',
-      search: ''
-    });
-  };
-
-  const handleViewDetails = (request: ServiceRequest) => {
-    setSelectedRequest(request);
-    setShowDetailsModal(true);
   };
 
   const handleAddServiceRequest = () => {
@@ -259,7 +185,7 @@ export default function CustomerSummaryPage() {
             <Input
               placeholder="Search"
               value={filters.search}
-              onChange={(e) => setFilters({...filters, search: e.target.value})}
+              onChange={e => setFilters({ ...filters, search: e.target.value })}
               className="border-0 shadow-none bg-gray-50 placeholder-gray-500"
             />
           </div>
@@ -267,14 +193,14 @@ export default function CustomerSummaryPage() {
           <div className="w-48">
             <Select
               value={filters.client || undefined}
-              onValueChange={(value) => setFilters({...filters, client: value || ''})}
+              onValueChange={value => setFilters({ ...filters, client: value || '' })}
             >
               <SelectTrigger className="border-0 shadow-none bg-gray-50">
                 <SelectValue placeholder="Select Clients" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__all__">All Clients</SelectItem>
-                {getUniqueClients().map((client) => (
+                {getUniqueClients().map(client => (
                   <SelectItem key={client} value={client}>
                     {client}
                   </SelectItem>
@@ -286,7 +212,9 @@ export default function CustomerSummaryPage() {
           <div className="w-48">
             <Select
               value={filters.status || undefined}
-              onValueChange={(value) => setFilters({...filters, status: value === '__all__' ? '' : value || ''})}
+              onValueChange={value =>
+                setFilters({ ...filters, status: value === '__all__' ? '' : value || '' })
+              }
             >
               <SelectTrigger className="border-0 shadow-none bg-gray-50">
                 <SelectValue placeholder="Select Status" />
@@ -315,38 +243,56 @@ export default function CustomerSummaryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Client</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Serv Que ID</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Request Narrative</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Que Category</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned To:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On:</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Client
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Serv Que ID
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Service Request Narrative
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Service Que Category
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Assigned To:
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Due Date:
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Modified By:
+                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
+                      Created On:
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.length > 0 ? (
                     filteredRequests.map((request, index) => (
-                      <TableRow 
-                        key={request.id} 
+                      <TableRow
+                        key={request.id}
                         className={`hover:bg-gray-50 border-0 ${
                           index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="font-medium text-gray-900">
-                            {request.client}
-                          </div>
+                          <div className="font-medium text-gray-900">{request.client}</div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="font-medium text-[#087055]">
-                            {request.serviceQueueId}
-                          </div>
+                          <div className="font-medium text-[#087055]">{request.serviceQueueId}</div>
                         </TableCell>
                         <TableCell className="text-center py-4 px-6 border-0">
-                          <Badge className={`font-semibold px-3 py-1 ${getStatusColor(request.taskStatus)}`}>
+                          <Badge
+                            className={`font-semibold px-3 py-1 ${getStatusColor(
+                              request.taskStatus
+                            )}`}
+                          >
                             {request.taskStatus.replace('_', ' ')}
                           </Badge>
                         </TableCell>
@@ -357,12 +303,16 @@ export default function CustomerSummaryPage() {
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
-                            {request.serviceQueueCategory.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {request.serviceQueueCategory
+                              .replace('_', ' ')
+                              .replace(/\b\w/g, l => l.toUpperCase())}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
-                            {request.assignedTo ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}` : 'Not Assigned'}
+                            {request.assignedTo
+                              ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}`
+                              : 'Not Assigned'}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
@@ -376,15 +326,16 @@ export default function CustomerSummaryPage() {
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
-                            {formatDate(request.createdAt)}
-                          </div>
+                          <div className="text-gray-600">{formatDate(request.createdAt)}</div>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow className="border-0">
-                      <TableCell colSpan={9} className="text-center py-12 text-gray-500 border-0">
+                      <TableCell
+                        colSpan={9}
+                        className="text-center py-12 text-gray-500 border-0"
+                      >
                         No requests found matching your filters.
                       </TableCell>
                     </TableRow>

@@ -67,8 +67,8 @@ interface SummaryStats {
 }
 
 const navigation = [
-  { name: 'All Request', href: '/agent', icon: Home, current: false },
-  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: true },
+  { name: 'All Request', href: '/agent', icon: Home, current: true },
+  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: false },
   { name: 'Reports', href: '/agent/reports', icon: BarChart3, current: false },
 ];
 

@@ -12,7 +12,7 @@ const createNoteSchema = z.object({
   requestId: z.string().optional(),
 });
 
-export const POST = requireRole(['super_admin'])(
+export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
   async (req: NextRequest) => {
     try {
       const userId = req.headers.get('x-user-id');

@@ -13,13 +13,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Building2, UserCheck, BarChart3, Settings, Users, FileText, Upload, X, Send, Loader2 } from 'lucide-react';
 
 const navigation = [
-  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
+  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: true },
+  { name: 'All Requests', href: '/admin/summary', icon: Building2, current: false },
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
-  /* { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: true }, */
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
-  { name: 'Summary', href: '/admin/summary', icon: Building2, current: false },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
   { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
+  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
 ];
 
 interface User {
@@ -95,17 +94,13 @@ export default function AdminAllRequestsPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        await Promise.all([
-          fetchCompanies(),
-          fetchAgents(),
-          fetchUsers(),
-          fetchCurrentUser(),
-          fetchNoteLogs()
-        ]);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
+      await Promise.all([
+        fetchCompanies(),
+        fetchAgents(),
+        fetchUsers(),
+        fetchCurrentUser(),
+        fetchNoteLogs()
+      ]);
     };
 
     fetchData();
@@ -127,7 +122,7 @@ export default function AdminAllRequestsPage() {
       } else {
         setCompanies([]);
       }
-    } catch (error) {
+    } catch {
       setCompanies([]);
     }
   };
@@ -149,7 +144,7 @@ export default function AdminAllRequestsPage() {
       } else {
         setAgents([]);
       }
-    } catch (error) {
+    } catch {
       setAgents([]);
     }
   };
@@ -170,7 +165,7 @@ export default function AdminAllRequestsPage() {
       } else {
         setUsers([]);
       }
-    } catch (error) {
+    } catch {
       setUsers([]);
     }
   };
@@ -188,9 +183,7 @@ export default function AdminAllRequestsPage() {
           }));
         }
       }
-    } catch (error) {
-      console.error('Failed to fetch current user:', error);
-    }
+    } catch {}
   };
 
   const fetchNoteLogs = async () => {
@@ -210,7 +203,7 @@ export default function AdminAllRequestsPage() {
       } else {
         setNoteLogs([]);
       }
-    } catch (error) {
+    } catch {
       setNoteLogs([]);
     }
   };
@@ -262,7 +255,7 @@ export default function AdminAllRequestsPage() {
       } else {
         alert(`Failed to add note: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
+    } catch {
       alert('Error adding note');
     } finally {
       setIsAddingNote(false);
@@ -324,7 +317,7 @@ export default function AdminAllRequestsPage() {
       } else {
         alert(`Failed to create service request: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
+    } catch {
       alert('Error creating service request');
     } finally {
       setIsSubmitting(false);
@@ -372,6 +365,7 @@ export default function AdminAllRequestsPage() {
   };
 
   const assignableUsers = getAllAssignableUsers();
+
 
   return (
     <DashboardLayout navigation={navigation} title="">

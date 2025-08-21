@@ -59,12 +59,11 @@ interface RecentActivity {
 
 const navigation = [
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: true },
+  { name: 'All Requests', href: '/admin/summary', icon: Building2, current: false },
   { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
-  /* { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: false }, */
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
-  { name: 'Summary', href: '/admin/summary', icon: Building2, current: false },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
   { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
+  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
 ];
 
 const generateLoginCode = () => {
@@ -278,16 +277,6 @@ export default function AllCustomersPage() {
     }, 300);
   };
 
-  const handleBackToCustomers = () => {
-    setIsTableTransitioning(true);
-    
-    setTimeout(() => {
-      setShowUsersTable(false);
-      setCurrentCustomerUsers(null);
-      setIsTableTransitioning(false);
-    }, 300);
-  };
-
   const handleViewDetails = (customer: CustomerData) => {
     setIsTableTransitioning(true);
     
@@ -305,16 +294,6 @@ export default function AllCustomersPage() {
         });
       }
       setShowDetailsForm(true);
-      setIsTableTransitioning(false);
-    }, 300);
-  };
-
-  const handleBackFromDetails = () => {
-    setIsTableTransitioning(true);
-    
-    setTimeout(() => {
-      setShowDetailsForm(false);
-      setSelectedCustomerDetails(null);
       setIsTableTransitioning(false);
     }, 300);
   };

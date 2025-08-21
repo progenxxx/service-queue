@@ -7,69 +7,49 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Building2, 
-  UserCheck, 
   BarChart3,
   Settings,
   Users,
-  Plus,
   Trash2,
-  RotateCcw
+  RefreshCw
 } from 'lucide-react';
 
-interface Agent {
+interface User {
   id: string;
   firstName: string;
   lastName: string;
   email: string;
-  loginCode: string;
-  assignedCompanyIds: string[];
+  role: string;
   isActive: boolean;
-  createdAt: string;
-  assignedCompanies?: Array<{
-    id: string;
-    companyName: string;
-  }>;
-}
-
-interface Company {
-  id: string;
-  companyName: string;
+  loginCode?: string;
 }
 
 interface RecentActivity {
   id: string;
-  type: string;
-  description: string;
-  timestamp: string;
   user: {
     firstName: string;
     lastName: string;
   };
-  company?: {
-    companyName: string;
-  };
+  description: string;
+  timestamp: string;
 }
 
 const navigation = [
-  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: true },
-  { name: 'All Requests', href: '/admin/summary', icon: Building2, current: false },
-  { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
-  { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
-  { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
+  { name: 'Create Request', href: '/customer', icon: Building2, current: false },
+  { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
+  { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
+  { name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: true }
 ];
 
-export default function AgentManagementPage() {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [companies, setCompanies] = useState<Company[]>([]);
+export default function CustomerAdminSettingsPage() {
+  const [users, setUsers] = useState<User[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
-  const [showAddAgent, setShowAddAgent] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showAddUser, setShowAddUser] = useState(false);
   const [showDetailsForm, setShowDetailsForm] = useState(false);
   const [isTableTransitioning, setIsTableTransitioning] = useState(false);
   
@@ -77,7 +57,7 @@ export default function AgentManagementPage() {
     firstName: '',
     lastName: '',
     email: '',
-    assignedCompanyIds: [] as string[]
+    loginCode: generateLoginCode(),
   });
 
   const [editableDetails, setEditableDetails] = useState({
@@ -85,67 +65,51 @@ export default function AgentManagementPage() {
     lastName: '',
     email: '',
     loginCode: '',
-    assignedCompanyIds: [] as string[]
   });
 
   useEffect(() => {
-    fetchAgents();
-    fetchCompanies();
+    fetchUsers();
     fetchRecentActivity();
   }, []);
 
-  const fetchAgents = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/admin/agents');
+      const response = await fetch('/api/customer/admin/users');
       if (response.ok) {
         const data = await response.json();
-        setAgents(data.agents || []);
+        setUsers(data.users || []);
       } else {
-        setAgents([]);
+        setUsers([]);
       }
-    } catch {
-      setAgents([]);
+    } catch (error) {
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchCompanies = async () => {
-    try {
-      const response = await fetch('/api/admin/companies');
-      if (response.ok) {
-        const data = await response.json();
-        setCompanies(data.companies || []);
-      } else {
-        setCompanies([]);
-      }
-    } catch {
-      setCompanies([]);
-    }
-  };
-
   const fetchRecentActivity = async () => {
     try {
-      const response = await fetch('/api/admin/dashboard/activity');
+      const response = await fetch('/api/customer/admin/activity');
       if (response.ok) {
         const data = await response.json();
         setRecentActivity(data.activities || []);
       }
-    } catch {
+    } catch (error) {
       setRecentActivity([]);
     }
   };
 
-  const generateAgentCode = () => {
+  function generateLoginCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
     for (let i = 0; i < 7; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length));
     }
     return result;
-  };
+  }
 
-  const handleAddAgent = async (e: React.FormEvent) => {
+  const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
@@ -154,7 +118,7 @@ export default function AgentManagementPage() {
     }
 
     try {
-      const response = await fetch('/api/admin/agents', {
+      const response = await fetch('/api/customer/admin/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -162,30 +126,29 @@ export default function AgentManagementPage() {
 
       if (response.ok) {
         const result = await response.json();
-        setShowAddAgent(false);
-        setFormData({ firstName: '', lastName: '', email: '', assignedCompanyIds: [] });
-        await fetchAgents();
-        alert(result.message || 'Agent created successfully!');
+        setShowAddUser(false);
+        setFormData({ firstName: '', lastName: '', email: '', loginCode: generateLoginCode() });
+        await fetchUsers();
+        alert(result.message || 'User created successfully!');
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to create agent');
+        alert(errorData.error || 'Failed to create user');
       }
-    } catch {
-      alert('Failed to add agent. Please try again.');
+    } catch (error) {
+      alert('Failed to add user. Please try again.');
     }
   };
 
-  const handleViewDetails = (agent: Agent) => {
+  const handleViewDetails = (user: User) => {
     setIsTableTransitioning(true);
     
     setTimeout(() => {
-      setSelectedAgent(agent);
+      setSelectedUser(user);
       setEditableDetails({
-        firstName: agent.firstName,
-        lastName: agent.lastName,
-        email: agent.email,
-        loginCode: agent.loginCode,
-        assignedCompanyIds: agent.assignedCompanyIds || []
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        loginCode: user.loginCode || generateLoginCode(),
       });
       setShowDetailsForm(true);
       setIsTableTransitioning(false);
@@ -197,76 +160,76 @@ export default function AgentManagementPage() {
     
     setTimeout(() => {
       setShowDetailsForm(false);
-      setSelectedAgent(null);
+      setSelectedUser(null);
       setIsTableTransitioning(false);
     }, 300);
   };
 
-  const handleBackToAgents = () => {
+  const handleBackToUsers = () => {
     setIsTableTransitioning(true);
     
     setTimeout(() => {
-      setShowAddAgent(false);
-      setFormData({ firstName: '', lastName: '', email: '', assignedCompanyIds: [] });
+      setShowAddUser(false);
+      setFormData({ firstName: '', lastName: '', email: '', loginCode: generateLoginCode() });
       setIsTableTransitioning(false);
     }, 300);
   };
 
   const handleSaveDetails = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedAgent) return;
+    if (!selectedUser) return;
 
     try {
-      const response = await fetch('/api/admin/agents', {
+      const response = await fetch('/api/customer/admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          agentId: selectedAgent.id,
+          userId: selectedUser.id,
           ...editableDetails
         }),
       });
 
       if (response.ok) {
-        await fetchAgents();
-        alert('Agent details updated successfully');
+        await fetchUsers();
+        alert('User details updated successfully');
         handleBackFromDetails();
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to update agent details');
+        alert(errorData.error || 'Failed to update user details');
       }
-    } catch {
-      alert('Failed to save agent details');
+    } catch (error) {
+      alert('Failed to save user details');
     }
   };
 
-  const handleDeleteAgent = async (agentId: string) => {
-    if (!confirm('Are you sure you want to delete this agent?')) {
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) {
       return;
     }
 
     try {
-      const response = await fetch('/api/admin/agents', {
+      const response = await fetch('/api/customer/admin/users', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ agentId }),
+        body: JSON.stringify({ userId }),
       });
 
       if (response.ok) {
-        await fetchAgents();
-        alert('Agent deleted successfully');
+        await fetchUsers();
+        alert('User deleted successfully');
       } else {
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to delete agent');
+        alert(errorData.error || 'Failed to delete user');
       }
-    } catch {
-      alert('Failed to delete agent');
+    } catch (error) {
+      alert('Failed to delete user');
     }
   };
 
-  const filteredAgents = agents.filter(agent =>
-    agent.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    agent.email.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUsers = users.filter(user =>
+    user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -285,7 +248,7 @@ export default function AgentManagementPage() {
         <div className="mb-6">
           <div className="flex items-center space-x-4 mb-4">
             <h1 className="text-3xl font-bold text-gray-900">
-              {showDetailsForm ? 'Agent Details' : 'Agents'}
+              {showDetailsForm ? 'User Details' : 'Users'}
             </h1>
             {showDetailsForm && (
               <Button 
@@ -293,31 +256,30 @@ export default function AgentManagementPage() {
                 variant="outline"
                 className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
               >
-                ← Back to Agents
+                ← Back to Users
               </Button>
             )}
           </div>
           
-          {!showDetailsForm && !showAddAgent && (
+          {!showDetailsForm && !showAddUser && (
             <div className="flex items-center space-x-4">
               <Input
-                placeholder="Search agents..."
+                placeholder="Search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-80"
               />
               <Button 
                 className="bg-[#068d1f] hover:bg-[#087055] text-white px-6 py-2 font-medium"
-                onClick={() => setShowAddAgent(true)}
+                onClick={() => setShowAddUser(true)}
               >
-                <Plus className="h-4 w-4 mr-2" />
                 Add User
               </Button>
             </div>
           )}
         </div>
 
-        {!showAddAgent && (
+        {!showAddUser && (
           <div className={`transition-all duration-300 ease-in-out ${
             isTableTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'
           }`}>
@@ -326,7 +288,7 @@ export default function AgentManagementPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="shadow-sm border-0">
                     <CardContent className="p-8">
-                      <h3 className="text-xl font-bold text-gray-900 mb-6">Agent Details</h3>
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">User Details</h3>
                       <form onSubmit={handleSaveDetails} className="space-y-6">
                         <div>
                           <Label htmlFor="detailsFirstName" className="text-sm font-medium text-gray-700 mb-2 block">
@@ -364,61 +326,10 @@ export default function AgentManagementPage() {
                             className="h-12"
                           />
                         </div>
-
-                        <div>
-                          <Label htmlFor="detailsAssignedCompanies" className="text-sm font-medium text-gray-700 mb-2 block">
-                            Assign Customer
-                          </Label>
-                          <Select
-                            onValueChange={(value) => {
-                              if (!editableDetails.assignedCompanyIds.includes(value)) {
-                                setEditableDetails({
-                                  ...editableDetails,
-                                  assignedCompanyIds: [...editableDetails.assignedCompanyIds, value]
-                                });
-                              }
-                            }}
-                          >
-                            <SelectTrigger className="h-12 bg-white border-gray-300">
-                              <SelectValue placeholder="Company Name" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white border border-gray-200">
-                              {companies.map((company) => (
-                                <SelectItem key={company.id} value={company.id} className="bg-white hover:bg-gray-50">
-                                  {company.companyName}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          {editableDetails.assignedCompanyIds.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              {editableDetails.assignedCompanyIds.map((companyId) => {
-                                const company = companies.find(c => c.id === companyId);
-                                return (
-                                  <div key={companyId} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border">
-                                    <span className="text-sm font-medium">{company?.companyName}</span>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                      onClick={() => setEditableDetails({
-                                        ...editableDetails,
-                                        assignedCompanyIds: editableDetails.assignedCompanyIds.filter(id => id !== companyId)
-                                      })}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
                         
                         <div>
                           <Label htmlFor="detailsLoginCode" className="text-sm font-medium text-gray-700 mb-2 block">
-                            Login Code
+                            Code
                           </Label>
                           <div className="relative">
                             <Input
@@ -430,10 +341,10 @@ export default function AgentManagementPage() {
                             />
                             <button
                               type="button"
-                              onClick={() => setEditableDetails({...editableDetails, loginCode: generateAgentCode()})}
+                              onClick={() => setEditableDetails({...editableDetails, loginCode: generateLoginCode()})}
                               className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
-                              <RotateCcw className="h-5 w-5" />
+                              <RefreshCw className="h-5 w-5" />
                             </button>
                           </div>
                         </div>
@@ -492,48 +403,43 @@ export default function AgentManagementPage() {
                         <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
                           <TableHead className="text-white font-medium py-4 px-6 text-left border-0">First Name</TableHead>
                           <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Last Name</TableHead>
-                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned To</TableHead>
                           <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Email</TableHead>
-                          <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Actions</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Code</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredAgents.length > 0 ? (
-                          filteredAgents.map((agent, index) => (
+                        {filteredUsers.length > 0 ? (
+                          filteredUsers.map((user, index) => (
                             <TableRow 
-                              key={agent.id} 
+                              key={user.id} 
                               className={`hover:bg-gray-50 border-0 ${
                                 index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                               }`}
                             >
                               <TableCell className="py-4 px-6 border-0">
                                 <div className="font-medium text-gray-900">
-                                  {agent.firstName}
+                                  {user.firstName}
                                 </div>
                               </TableCell>
                               <TableCell className="py-4 px-6 border-0">
                                 <div className="font-medium text-gray-900">
-                                  {agent.lastName}
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-4 px-6 border-0">
-                                <div className="text-gray-600">
-                                  {agent.assignedCompanies && agent.assignedCompanies.length > 0 
-                                    ? agent.assignedCompanies.map(c => c.companyName).join(', ')
-                                    : 'No companies assigned'
-                                  }
+                                  {user.lastName}
                                 </div>
                               </TableCell>
                               <TableCell className="text-gray-600 py-4 px-6 border-0">
-                                {agent.email}
+                                {user.email}
+                              </TableCell>
+                              <TableCell className="text-gray-600 py-4 px-6 border-0">
+                                {user.loginCode}
                               </TableCell>
                               <TableCell className="text-center py-4 px-6 border-0">
-                                <div className="flex space-x-2 justify-center">
+                                <div className="flex space-x-2">
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-3 py-2 text-xs font-medium rounded"
-                                    onClick={() => handleViewDetails(agent)}
+                                    onClick={() => handleViewDetails(user)}
                                   >
                                     View Details
                                   </Button>
@@ -541,7 +447,7 @@ export default function AgentManagementPage() {
                                     variant="outline"
                                     size="sm"
                                     className="text-red-600 border-red-400 hover:bg-red-500 hover:text-white px-3 py-2 rounded"
-                                    onClick={() => handleDeleteAgent(agent.id)}
+                                    onClick={() => handleDeleteUser(user.id)}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -552,7 +458,7 @@ export default function AgentManagementPage() {
                         ) : (
                           <TableRow className="border-0">
                             <TableCell colSpan={5} className="text-center py-12 text-gray-500 border-0">
-                              No agents found.
+                              No users found.
                             </TableCell>
                           </TableRow>
                         )}
@@ -565,29 +471,29 @@ export default function AgentManagementPage() {
           </div>
         )}
 
-        {showAddAgent && (
+        {showAddUser && (
           <div className="w-full max-w-2xl">
             <Card className="shadow-sm border-0">
               <CardContent className="p-8">
                 <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-2xl font-bold text-gray-900">Agent User</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Add User</h2>
                   <Button 
-                    onClick={handleBackToAgents}
+                    onClick={handleBackToUsers}
                     variant="outline"
                     className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
                   >
-                    ← Back to Agents
+                    ← Back to Users
                   </Button>
                 </div>
                 
-                <form onSubmit={handleAddAgent} className="space-y-6">
+                <form onSubmit={handleAddUser} className="space-y-6">
                   <div>
                     <Label htmlFor="firstName" className="text-sm font-medium text-gray-700 mb-2 block">
                       First Name
                     </Label>
                     <Input
                       id="firstName"
-                      placeholder="First Name"
+                      placeholder="Enter Document Title"
                       value={formData.firstName}
                       onChange={(e) => setFormData({...formData, firstName: e.target.value})}
                       required
@@ -601,7 +507,7 @@ export default function AgentManagementPage() {
                     </Label>
                     <Input
                       id="lastName"
-                      placeholder="Last Name"
+                      placeholder="Enter Service Objective and Narrative"
                       value={formData.lastName}
                       onChange={(e) => setFormData({...formData, lastName: e.target.value})}
                       required
@@ -616,7 +522,7 @@ export default function AgentManagementPage() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="test@gmail.com"
+                      placeholder="Enter Service Objective and Narrative"
                       value={formData.email}
                       onChange={(e) => setFormData({...formData, email: e.target.value})}
                       required
@@ -625,54 +531,25 @@ export default function AgentManagementPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="assignedCompanies" className="text-sm font-medium text-gray-700 mb-2 block">
-                      Assign Customer
+                    <Label htmlFor="loginCode" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Code
                     </Label>
-                    <Select
-                      onValueChange={(value) => {
-                        if (!formData.assignedCompanyIds.includes(value)) {
-                          setFormData({
-                            ...formData,
-                            assignedCompanyIds: [...formData.assignedCompanyIds, value]
-                          });
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-12 bg-white border-gray-300">
-                        <SelectValue placeholder="Company Name" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border border-gray-200">
-                        {companies.map((company) => (
-                          <SelectItem key={company.id} value={company.id} className="bg-white hover:bg-gray-50">
-                            {company.companyName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {formData.assignedCompanyIds.length > 0 && (
-                      <div className="mt-3 space-y-2">
-                        {formData.assignedCompanyIds.map((companyId) => {
-                          const company = companies.find(c => c.id === companyId);
-                          return (
-                            <div key={companyId} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border">
-                              <span className="text-sm font-medium">{company?.companyName}</span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                onClick={() => setFormData({
-                                  ...formData,
-                                  assignedCompanyIds: formData.assignedCompanyIds.filter(id => id !== companyId)
-                                })}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    <div className="relative">
+                      <Input
+                        id="loginCode"
+                        value={formData.loginCode}
+                        onChange={(e) => setFormData({...formData, loginCode: e.target.value})}
+                        className="h-12 pr-12"
+                        maxLength={7}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, loginCode: generateLoginCode()})}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        <RefreshCw className="h-5 w-5" />
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="pt-4 flex space-x-4">
@@ -685,7 +562,7 @@ export default function AgentManagementPage() {
                     <Button 
                       type="button"
                       variant="outline"
-                      onClick={handleBackToAgents}
+                      onClick={handleBackToUsers}
                       className="px-8 py-3"
                     >
                       Cancel

@@ -53,7 +53,7 @@ export const GET = requireRole(['super_admin'])(
 
       const formattedActivities: ActivityItem[] = recentActivities.map((activity) => ({
         id: activity.id,
-        type: activity.type, // Fixed: Changed from activity.action to activity.type
+        type: activity.type, 
         description: activity.description,
         createdBy: activity.user ? `${activity.user.firstName} ${activity.user.lastName}` : 'Unknown User',
         createdAt: new Date(activity.createdAt).toLocaleString('en-US', {

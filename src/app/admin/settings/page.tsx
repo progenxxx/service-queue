@@ -7,24 +7,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Building2, 
-  UserCheck, 
-  BarChart3,
-  Settings,
-  Users,
-  Loader2,
-  Eye,
-  EyeOff
-} from 'lucide-react';
+import { Building2, UserCheck, BarChart3, Settings, Loader2, Eye, EyeOff } from 'lucide-react';
 
 const navigation = [
-  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
-  { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
+  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: true },
+  { name: 'All Requests', href: '/admin/summary', icon: Building2, current: false },
+  { name: 'Customer Management', href: '/admin/customers/manage', icon: Building2, current: false },
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
-  { name: 'Summary', href: '/admin/summary', icon: Building2, current: false },
+  { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
   { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
-  { name: 'Settings', href: '/admin/settings', icon: Settings, current: true },
 ];
 
 export default function AdminSettingsPage() {
@@ -60,13 +51,8 @@ export default function AdminSettingsPage() {
     try {
       const response = await fetch('/api/admin/settings/reset-password', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
       });
 
       const result = await response.json();
@@ -81,7 +67,7 @@ export default function AdminSettingsPage() {
         setMessage(result.error || 'Failed to update password');
         setMessageType('error');
       }
-    } catch (error) {
+    } catch {
       setMessage('An error occurred while updating password');
       setMessageType('error');
     } finally {
@@ -100,9 +86,7 @@ export default function AdminSettingsPage() {
           <Card className="shadow-sm border-0">
             <CardHeader className="border-b border-gray-100">
               <CardTitle className="text-xl font-semibold text-gray-900">Reset Password</CardTitle>
-              <p className="text-sm text-gray-500 mt-1">
-                Update your password to keep your account secure
-              </p>
+              <p className="text-sm text-gray-500 mt-1">Update your password to keep your account secure</p>
             </CardHeader>
             <CardContent className="p-6">
               <form onSubmit={handleResetPassword} className="space-y-6">
@@ -155,9 +139,7 @@ export default function AdminSettingsPage() {
                       {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Password must be at least 8 characters long
-                  </p>
+                  <p className="mt-1 text-xs text-gray-500">Password must be at least 8 characters long</p>
                 </div>
 
                 <div>

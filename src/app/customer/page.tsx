@@ -10,15 +10,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Building2, UserCheck, BarChart3, Settings, Users, FileText, Upload, X, Send, Loader2 } from 'lucide-react';
+import { Building2, BarChart3, Settings, FileText, Upload, X, Send, Loader2 } from 'lucide-react';
 
 const getNavigation = (userRole: string) => [
   { name: 'Create Request', href: '/customer', icon: Building2, current: true },
   { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
   { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
-  ...(userRole === 'customer_admin' ? [
-    { name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: false }
-  ] : [])
+  ...(userRole === 'customer_admin'
+    ? [{ name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: false }]
+    : []),
 ];
 
 interface User {
@@ -80,7 +80,6 @@ export default function CustomerRequestPage() {
   const [showNoteDialog, setShowNoteDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAddingNote, setIsAddingNote] = useState(false);
-  const [companies, setCompanies] = useState<Company[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [noteLogs, setNoteLogs] = useState<NoteLog[]>([]);
@@ -89,87 +88,51 @@ export default function CustomerRequestPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        await Promise.all([
-          fetchCurrentUser(),
-          fetchCompanies(),
-          fetchAgents(),
-          fetchNoteLogs()
-        ]);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
+      await Promise.all([fetchCurrentUser(), fetchAgents(), fetchNoteLogs()]);
     };
-
     fetchData();
   }, []);
 
   const fetchCurrentUser = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user) {
-          setCurrentUser(data.user);
-          setNavigation(getNavigation(data.user.role));
-          setFormData((prev) => ({
-            ...prev,
-            companyId: data.user.companyId || '',
-          }));
-        }
+    const response = await fetch('/api/auth/me');
+    if (response.ok) {
+      const data = await response.json();
+      if (data.user) {
+        setCurrentUser(data.user);
+        setNavigation(getNavigation(data.user.role));
+        setFormData((prev) => ({
+          ...prev,
+          companyId: data.user.companyId || '',
+        }));
       }
-    } catch (error) {
-      console.error('Failed to fetch current user:', error);
-    }
-  };
-
-  const fetchCompanies = async () => {
-    try {
-      const response = await fetch('/api/customer/companies');
-      if (response.ok) {
-        const data = await response.json();
-        setCompanies(data.companies || []);
-      } else {
-        setCompanies([]);
-      }
-    } catch (error) {
-      setCompanies([]);
     }
   };
 
   const fetchAgents = async () => {
-    try {
-      const response = await fetch('/api/customer/agents');
-      if (response.ok) {
-        const data = await response.json();
-        const agentsOnly = (data.agents || []).filter((agent: Agent) => agent.type === 'agent');
-        setAgents(agentsOnly);
-      } else {
-        setAgents([]);
-      }
-    } catch (error) {
+    const response = await fetch('/api/customer/agents');
+    if (response.ok) {
+      const data = await response.json();
+      const agentsOnly = (data.agents || []).filter((agent: Agent) => agent.type === 'agent');
+      setAgents(agentsOnly);
+    } else {
       setAgents([]);
     }
   };
 
   const fetchNoteLogs = async () => {
-    try {
-      const response = await fetch('/api/admin/request');
-      if (response.ok) {
-        const data = await response.json();
-        const validNotes = (data.notes || []).filter(
-          (note: NoteLog) =>
-            note &&
-            note.id &&
-            note.author &&
-            note.request &&
-            typeof note.noteContent === 'string'
-        );
-        setNoteLogs(validNotes);
-      } else {
-        setNoteLogs([]);
-      }
-    } catch (error) {
+    const response = await fetch('/api/admin/request');
+    if (response.ok) {
+      const data = await response.json();
+      const validNotes = (data.notes || []).filter(
+        (note: NoteLog) =>
+          note &&
+          note.id &&
+          note.author &&
+          note.request &&
+          typeof note.noteContent === 'string'
+      );
+      setNoteLogs(validNotes);
+    } else {
       setNoteLogs([]);
     }
   };
@@ -221,8 +184,6 @@ export default function CustomerRequestPage() {
       } else {
         alert(`Failed to add note: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      alert('Error adding note');
     } finally {
       setIsAddingNote(false);
     }
@@ -283,8 +244,6 @@ export default function CustomerRequestPage() {
       } else {
         alert(`Failed to create service request: ${result.error || 'Unknown error'}`);
       }
-    } catch (error) {
-      alert('Error creating service request');
     } finally {
       setIsSubmitting(false);
     }
@@ -307,7 +266,7 @@ export default function CustomerRequestPage() {
       minute: '2-digit',
     });
   };
-
+  
   return (
     <DashboardLayout navigation={navigation} title="">
       <div className="space-y-6 bg-gray-50 min-h-screen p-6">

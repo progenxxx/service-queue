@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { 
   Building2, 
   UserCheck, 
@@ -15,8 +14,6 @@ import {
   Settings,
   Users,
   Trash2,
-  Copy,
-  Check,
   Plus,
   RefreshCw
 } from 'lucide-react';
@@ -52,23 +49,13 @@ interface RecentActivity {
 }
 
 const navigation = [
-  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: false },
-  { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: true },
-  /* { name: 'All Request', href: '/admin/customers/requests', icon: Building2, current: false }, */
+  { name: 'All Customers', href: '/admin/customers', icon: Building2, current: true },
+  { name: 'All Requests', href: '/admin/summary', icon: Building2, current: false },
+  { name: 'Customer Management', href: '/admin/customers/manage', icon: Users, current: false },
   { name: 'Agent Management', href: '/admin/agents', icon: UserCheck, current: false },
-  { name: 'Summary', href: '/admin/summary', icon: Building2, current: false },
-  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
   { name: 'Settings', href: '/admin/settings', icon: Settings, current: false },
+  { name: 'Reports', href: '/admin/reports', icon: BarChart3, current: false },
 ];
-
-const generateCompanyCode = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 7; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-};
 
 const generateLoginCode = () => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -92,7 +79,6 @@ export default function CustomerManagementPage() {
   const [showAddUserForm, setShowAddUserForm] = useState(false);
   const [currentCustomerUsers, setCurrentCustomerUsers] = useState<Customer | null>(null);
   const [isTableTransitioning, setIsTableTransitioning] = useState(false);
-  const [copiedCode, setCopiedCode] = useState<string | null>(null);
   
   const [editableDetails, setEditableDetails] = useState({
     companyName: '',
@@ -136,9 +122,6 @@ export default function CustomerManagementPage() {
       } else {
         setCustomers([]);
       }
-    } catch (error) {
-      console.error('Failed to fetch customers:', error);
-      setCustomers([]);
     } finally {
       setLoading(false);
     }
@@ -151,9 +134,7 @@ export default function CustomerManagementPage() {
         const data = await response.json();
         setRecentActivity(data.activities || []);
       }
-    } catch (error) {
-      console.error('Failed to fetch activity:', error);
-    }
+    } catch {}
   };
 
   useEffect(() => {
@@ -163,21 +144,17 @@ export default function CustomerManagementPage() {
 
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      const response = await fetch('/api/admin/customers/manage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+    const response = await fetch('/api/admin/customers/manage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData),
+    });
 
-      if (response.ok) {
-        setShowAddCustomer(false);
-        setFormData({ companyName: '', primaryContact: '', phone: '', email: '' });
-        fetchCustomers();
-        alert('Customer created successfully!');
-      }
-    } catch (error) {
-      console.error('Failed to add customer:', error);
+    if (response.ok) {
+      setShowAddCustomer(false);
+      setFormData({ companyName: '', primaryContact: '', phone: '', email: '' });
+      fetchCustomers();
+      alert('Customer created successfully!');
     }
   };
 
@@ -185,32 +162,28 @@ export default function CustomerManagementPage() {
     e.preventDefault();
     if (!currentCustomerUsers) return;
 
-    try {
-      const response = await fetch('/api/admin/customers/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...userFormData,
-          customerId: currentCustomerUsers.id
-        }),
-      });
+    const response = await fetch('/api/admin/customers/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...userFormData,
+        customerId: currentCustomerUsers.id
+      }),
+    });
 
-      if (response.ok) {
-        setShowAddUserForm(false);
-        setUserFormData({ firstName: '', lastName: '', email: '', role: 'customer', loginCode: '' });
-        await fetchCustomers();
-        
-        const updatedCustomer = customers.find(c => c.id === currentCustomerUsers.id);
-        if (updatedCustomer) {
-          setCurrentCustomerUsers({
-            ...currentCustomerUsers,
-            users: updatedCustomer.users
-          });
-        }
-        alert('User added successfully!');
+    if (response.ok) {
+      setShowAddUserForm(false);
+      setUserFormData({ firstName: '', lastName: '', email: '', role: 'customer', loginCode: '' });
+      await fetchCustomers();
+      
+      const updatedCustomer = customers.find(c => c.id === currentCustomerUsers.id);
+      if (updatedCustomer) {
+        setCurrentCustomerUsers({
+          ...currentCustomerUsers,
+          users: updatedCustomer.users
+        });
       }
-    } catch (error) {
-      console.error('Failed to add user:', error);
+      alert('User added successfully!');
     }
   };
 
@@ -218,94 +191,70 @@ export default function CustomerManagementPage() {
     e.preventDefault();
     if (!selectedCustomerDetails) return;
 
-    try {
-      const response = await fetch('/api/admin/customers/update-details', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerId: selectedCustomerDetails.id,
-          companyName: editableDetails.companyName,
-          firstName: editableDetails.firstName,
-          lastName: editableDetails.lastName,
-          email: editableDetails.email,
-          loginCode: editableDetails.loginCode,
-          role: editableDetails.role
-        }),
-      });
+    const response = await fetch('/api/admin/customers/update-details', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerId: selectedCustomerDetails.id,
+        companyName: editableDetails.companyName,
+        firstName: editableDetails.firstName,
+        lastName: editableDetails.lastName,
+        email: editableDetails.email,
+        loginCode: editableDetails.loginCode,
+        role: editableDetails.role
+      }),
+    });
 
-      if (response.ok) {
-        fetchCustomers();
-        alert('Customer details updated successfully');
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to update customer details');
-      }
-    } catch (error) {
-      alert('Failed to save customer details');
+    if (response.ok) {
+      fetchCustomers();
+      alert('Customer details updated successfully');
+    } else {
+      const errorData = await response.json();
+      alert(errorData.error || 'Failed to update customer details');
     }
   };
 
   const handleDeleteUser = async (userId: string, customerId: string) => {
     if (confirm('Are you sure you want to delete this user?')) {
-      try {
-        const response = await fetch('/api/admin/customers/users', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, customerId }),
-        });
+      const response = await fetch('/api/admin/customers/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, customerId }),
+      });
 
-        if (response.ok) {
-          await fetchCustomers();
-          if (currentCustomerUsers) {
-            const updatedCustomer = customers.find(c => c.id === customerId);
-            if (updatedCustomer) {
-              setCurrentCustomerUsers(updatedCustomer);
-            }
+      if (response.ok) {
+        await fetchCustomers();
+        if (currentCustomerUsers) {
+          const updatedCustomer = customers.find(c => c.id === customerId);
+          if (updatedCustomer) {
+            setCurrentCustomerUsers(updatedCustomer);
           }
-          alert('User deleted successfully');
         }
-      } catch (error) {
-        console.error('Failed to delete user:', error);
+        alert('User deleted successfully');
       }
     }
   };
 
   const handleDeleteCustomer = async (customerId: string) => {
     if (confirm('Are you sure you want to delete this customer? This action cannot be undone and will also delete all associated users.')) {
-      try {
-        const response = await fetch('/api/admin/customers/manage', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ customerId }),
-        });
+      const response = await fetch('/api/admin/customers/manage', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId }),
+      });
 
-        if (response.ok) {
-          fetchCustomers();
-          alert('Customer deleted successfully');
-        } else {
-          const errorData = await response.json();
-          alert(errorData.error || 'Failed to delete customer');
-        }
-      } catch (error) {
-        console.error('Delete error:', error);
-        alert('Failed to delete customer');
+      if (response.ok) {
+        fetchCustomers();
+        alert('Customer deleted successfully');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete customer');
       }
-    }
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopiedCode(text);
-      setTimeout(() => setCopiedCode(null), 2000);
-    } catch (error) {
-      console.error('Failed to copy code:', error);
     }
   };
 
   const handleViewUsers = async (customer: Customer) => {
     setIsTableTransitioning(true);
-    
     setTimeout(() => {
       setCurrentCustomerUsers(customer);
       setShowUsersTable(true);
@@ -315,7 +264,6 @@ export default function CustomerManagementPage() {
 
   const handleBackToCustomers = () => {
     setIsTableTransitioning(true);
-    
     setTimeout(() => {
       setShowUsersTable(false);
       setCurrentCustomerUsers(null);
@@ -325,7 +273,6 @@ export default function CustomerManagementPage() {
 
   const handleViewDetails = (customer: Customer) => {
     setIsTableTransitioning(true);
-    
     setTimeout(() => {
       setSelectedCustomerDetails(customer);
       if (customer.users && customer.users.length > 0) {
@@ -346,7 +293,6 @@ export default function CustomerManagementPage() {
 
   const handleBackFromDetails = () => {
     setIsTableTransitioning(true);
-    
     setTimeout(() => {
       setShowDetailsForm(false);
       setSelectedCustomerDetails(null);
