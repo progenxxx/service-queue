@@ -1,5 +1,5 @@
 CREATE TYPE "public"."activity_type" AS ENUM('request_created', 'request_updated', 'request_assigned', 'note_added', 'attachment_uploaded', 'status_changed', 'user_created', 'user_updated', 'company_updated');--> statement-breakpoint
-CREATE TYPE "public"."service_queue_category" AS ENUM('policy_inquiry', 'claims_processing', 'account_update', 'technical_support', 'billing_inquiry', 'other');--> statement-breakpoint
+CREATE TYPE "public"."service_queue_category" AS ENUM('policy_inquiry', 'claims_processing', 'account_update', 'technical_support', 'billing_inquiry', 'client_service_cancel_non_renewal', 'other');--> statement-breakpoint
 CREATE TYPE "public"."task_status" AS ENUM('new', 'open', 'in_progress', 'closed');--> statement-breakpoint
 CREATE TYPE "public"."user_role" AS ENUM('customer', 'customer_admin', 'agent', 'super_admin');--> statement-breakpoint
 CREATE TABLE "activity_logs" (

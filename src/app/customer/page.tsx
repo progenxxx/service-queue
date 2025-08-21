@@ -12,7 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Building2, UserCheck, BarChart3, Settings, Users, FileText, Upload, X, Send, Loader2 } from 'lucide-react';
 
-// Updated navigation based on user role
 const getNavigation = (userRole: string) => [
   { name: 'Create Request', href: '/customer', icon: Building2, current: true },
   { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
@@ -72,7 +71,7 @@ export default function CustomerRequestPage() {
     serviceObjective: '',
     client: '',
     assignedById: '',
-    serviceQueueCategory: '',
+    serviceQueueCategory: 'client_service_cancel_non_renewal',
     companyId: '',
   });
 
@@ -115,7 +114,6 @@ export default function CustomerRequestPage() {
           setNavigation(getNavigation(data.user.role));
           setFormData((prev) => ({
             ...prev,
-            assignedById: data.user.id,
             companyId: data.user.companyId || '',
           }));
         }
@@ -144,7 +142,8 @@ export default function CustomerRequestPage() {
       const response = await fetch('/api/customer/agents');
       if (response.ok) {
         const data = await response.json();
-        setAgents(data.agents || []);
+        const agentsOnly = (data.agents || []).filter((agent: Agent) => agent.type === 'agent');
+        setAgents(agentsOnly);
       } else {
         setAgents([]);
       }
@@ -273,8 +272,8 @@ export default function CustomerRequestPage() {
           dueDate: '',
           serviceObjective: '',
           client: '',
-          assignedById: currentUser?.id || '',
-          serviceQueueCategory: '',
+          assignedById: '',
+          serviceQueueCategory: 'client_service_cancel_non_renewal',
           companyId: currentUser?.companyId || '',
         });
 
@@ -397,38 +396,14 @@ export default function CustomerRequestPage() {
                       <Label htmlFor="client" className="text-sm font-medium text-gray-700 mb-2 block">
                         Client *
                       </Label>
-                      <Select 
-                        value={formData.client} 
-                        onValueChange={(value) => {
-                          const selectedCompany = companies.find(c => c.primaryContact === value);
-                          setFormData({
-                            ...formData, 
-                            client: value,
-                            companyId: selectedCompany?.id || ''
-                          });
-                        }}
-                      >
-                        <SelectTrigger className="border-gray-200 bg-white">
-                          <SelectValue placeholder="Select a client" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white border border-gray-200">
-                          {companies.length > 0 ? (
-                            companies.map((company) => (
-                              <SelectItem 
-                                key={company.id} 
-                                value={company.primaryContact}
-                                className="bg-white hover:bg-gray-50"
-                              >
-                                {company.primaryContact} - {company.companyName}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-clients" disabled className="text-gray-400">
-                              No clients available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        id="client"
+                        placeholder="Enter client name"
+                        value={formData.client}
+                        onChange={(e) => setFormData({...formData, client: e.target.value})}
+                        required
+                        className="border-gray-200"
+                      />
                     </div>
 
                     <div>
@@ -440,7 +415,7 @@ export default function CustomerRequestPage() {
                         onValueChange={(value) => setFormData({...formData, assignedById: value})}
                       >
                         <SelectTrigger className="border-gray-200 bg-white">
-                          <SelectValue placeholder="Select an assignee" />
+                          <SelectValue placeholder="Select an agent" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
                           {agents.length > 0 ? (
@@ -450,19 +425,19 @@ export default function CustomerRequestPage() {
                                 value={agent.id}
                                 className="bg-white hover:bg-gray-50"
                               >
-                                {agent.firstName} {agent.lastName} ({agent.type === 'agent' ? 'Agent' : 'Admin'})
+                                {agent.firstName} {agent.lastName} (Agent)
                               </SelectItem>
                             ))
                           ) : (
-                            <SelectItem value="no-users" disabled className="text-gray-400">
-                              No assignable users available
+                            <SelectItem value="no-agents" disabled className="text-gray-400">
+                              No agents available
                             </SelectItem>
                           )}
                         </SelectContent>
                       </Select>
                       {agents.length === 0 && (
                         <p className="mt-1 text-xs text-red-500">
-                          No agents or admin users found. Please contact your administrator.
+                          No agents found. Please contact your administrator.
                         </p>
                       )}
                     </div>
@@ -471,13 +446,16 @@ export default function CustomerRequestPage() {
                       <Label htmlFor="serviceQueueCategory" className="text-sm font-medium text-gray-700 mb-2 block">
                         Service Queue Category
                       </Label>
-                      <Select value={formData.serviceQueueCategory} onValueChange={(value) => setFormData({...formData, serviceQueueCategory: value})}>
+                      <Select 
+                        value={formData.serviceQueueCategory} 
+                        onValueChange={(value) => setFormData({...formData, serviceQueueCategory: value})}
+                      >
                         <SelectTrigger className="border-gray-200 bg-white">
-                          <SelectValue placeholder="Select a category" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="other" className="bg-white hover:bg-gray-50">
-                            Other
+                          <SelectItem value="client_service_cancel_non_renewal" className="bg-white hover:bg-gray-50">
+                            Client Service - Cancel/Non Renewal Notice
                           </SelectItem>
                         </SelectContent>
                       </Select>

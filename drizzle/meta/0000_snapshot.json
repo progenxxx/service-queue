@@ -1,5 +1,5 @@
 {
-  "id": "1d6fdc11-2c0b-4369-8bd0-3757973ae632",
+  "id": "db2e3e93-c569-4d94-8125-d7b55cc4445f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -792,6 +792,7 @@
         "account_update",
         "technical_support",
         "billing_inquiry",
+        "client_service_cancel_non_renewal",
         "other"
       ]
     },

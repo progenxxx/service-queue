@@ -37,7 +37,7 @@ export type ServiceRequestWithDetails = ServiceRequest & {
 
 export type UserRole = 'customer' | 'customer_admin' | 'agent' | 'super_admin';
 export type TaskStatus = 'new' | 'open' | 'in_progress' | 'closed';
-export type ServiceQueueCategory = 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'other';
+export type ServiceQueueCategory = 'policy_inquiry' | 'claims_processing' | 'account_update' | 'technical_support' | 'billing_inquiry' | 'client_service_cancel_non_renewal' | 'other';
 
 export interface AuthUser {
   id: string;

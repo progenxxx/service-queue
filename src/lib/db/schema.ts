@@ -10,6 +10,7 @@ export const serviceQueueCategoryEnum = pgEnum('service_queue_category', [
   'account_update',
   'technical_support',
   'billing_inquiry',
+  'client_service_cancel_non_renewal',
   'other',
 ]);
 export const activityTypeEnum = pgEnum('activity_type', [

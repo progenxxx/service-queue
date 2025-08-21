@@ -29,40 +29,19 @@ export const GET = requireRole(['customer', 'customer_admin'])(
         },
       });
 
-      const superAdmins = await db.query.users.findMany({
-        where: eq(users.role, 'super_admin'),
-        columns: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          role: true,
-          isActive: true,
-        },
-      });
-
-      const assignableUsers = [
-        ...agentsAssignedToCompany.map(agent => ({
-          id: agent.id,
+      const assignableAgents = agentsAssignedToCompany
+        .filter(agent => agent.user.isActive && agent.isActive)
+        .map(agent => ({
+          id: agent.id, 
           firstName: agent.user.firstName,
           lastName: agent.user.lastName,
           email: agent.user.email,
           role: agent.user.role,
           isActive: agent.user.isActive,
           type: 'agent'
-        })),
-        ...superAdmins.map(admin => ({
-          id: admin.id,
-          firstName: admin.firstName,
-          lastName: admin.lastName,
-          email: admin.email,
-          role: admin.role,
-          isActive: admin.isActive,
-          type: 'super_admin'
-        }))
-      ];
+        }));
 
-      return NextResponse.json({ agents: assignableUsers });
+      return NextResponse.json({ agents: assignableAgents });
     } catch (error) {
       console.error('Failed to fetch agents:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

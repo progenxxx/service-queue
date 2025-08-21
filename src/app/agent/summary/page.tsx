@@ -67,12 +67,12 @@ interface SummaryStats {
 }
 
 const navigation = [
-  { name: 'All Request', href: '/agent', icon: Home, current: true },
-  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: false },
+  { name: 'All Request', href: '/agent', icon: Home, current: false },
+  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: true },
   { name: 'Reports', href: '/agent/reports', icon: BarChart3, current: false },
 ];
 
-export default function AgentAllRequestsPage() {
+export default function AgentSummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -91,7 +91,7 @@ export default function AgentAllRequestsPage() {
   });
 
   useEffect(() => {
-    fetchAllRequests();
+    fetchMyRequests();
     fetchUsers();
   }, []);
 
@@ -140,16 +140,16 @@ export default function AgentAllRequestsPage() {
     setFilteredRequests(filtered);
   }, [requests, filters]);
 
-  const fetchAllRequests = async () => {
+  const fetchMyRequests = async () => {
     try {
-      const response = await fetch('/api/admin/summary');
+      const response = await fetch('/api/agent/summary');
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
         setSummaryStats(data.summary || null);
       }
     } catch (error) {
-      console.error('Failed to fetch requests data:', error);
+      console.error('Failed to fetch my requests data:', error);
     } finally {
       setLoading(false);
     }
@@ -217,7 +217,7 @@ export default function AgentAllRequestsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout navigation={navigation} title="All Requests">
+      <DashboardLayout navigation={navigation} title="My Queues">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#087055]"></div>
         </div>
@@ -226,10 +226,69 @@ export default function AgentAllRequestsPage() {
   }
 
   return (
-    <DashboardLayout navigation={navigation} title="All Requests">
+    <DashboardLayout navigation={navigation} title="My Queues">
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">All Tasks</h1>
+          <h1 className="text-2xl font-bold text-gray-900">My Assigned Tasks</h1>
+        </div>
+
+        {/* Summary Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600">Total Assigned</p>
+                  <p className="text-3xl font-bold text-blue-900">{summaryStats?.totalRequests || 0}</p>
+                </div>
+                <div className="bg-blue-500 p-3 rounded-full">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-yellow-600">In Progress</p>
+                  <p className="text-3xl font-bold text-yellow-900">{summaryStats?.inProgressRequests || 0}</p>
+                </div>
+                <div className="bg-yellow-500 p-3 rounded-full">
+                  <Clock className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600">Completed</p>
+                  <p className="text-3xl font-bold text-green-900">{summaryStats?.closedRequests || 0}</p>
+                </div>
+                <div className="bg-green-500 p-3 rounded-full">
+                  <CheckCircle2 className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-red-600">Overdue</p>
+                  <p className="text-3xl font-bold text-red-900">{summaryStats?.overdueRequests || 0}</p>
+                </div>
+                <div className="bg-red-500 p-3 rounded-full">
+                  <AlertTriangle className="h-6 w-6 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <div className="flex gap-4 items-center py-4">
@@ -298,10 +357,9 @@ export default function AgentAllRequestsPage() {
                     <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Request Narrative</TableHead>
                     <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Que Category</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned To:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By:</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On:</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -340,11 +398,6 @@ export default function AgentAllRequestsPage() {
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
-                            {request.assignedTo ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}` : 'Not Assigned'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
                             {request.dueDate ? formatDate(request.dueDate) : 'No Due Date'}
                           </div>
                         </TableCell>
@@ -362,8 +415,11 @@ export default function AgentAllRequestsPage() {
                     ))
                   ) : (
                     <TableRow className="border-0">
-                      <TableCell colSpan={9} className="text-center py-12 text-gray-500 border-0">
-                        No requests found matching your filters.
+                      <TableCell colSpan={8} className="text-center py-12 text-gray-500 border-0">
+                        {filters.search || filters.client || filters.status ? 
+                          'No requests found matching your filters.' : 
+                          'No requests assigned to you yet.'
+                        }
                       </TableCell>
                     </TableRow>
                   )}
