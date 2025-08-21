@@ -8,7 +8,20 @@ import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Building2, BarChart3, Settings } from 'lucide-react';
+import { 
+  BarChart3,
+  Home,
+  Settings
+} from 'lucide-react';
+
+interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  companyId?: string;
+}
 
 interface ServiceRequest {
   id: string;
@@ -37,19 +50,20 @@ interface ServiceRequest {
 }
 
 const getNavigation = (userRole: string) => [
-  { name: 'Create Request', href: '/customer', icon: Building2, current: false },
-  { name: 'Summary', href: '/customer/summary', icon: Building2, current: true },
-  { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
+  { name: 'All Request', href: '/agent', icon: Home, current: false },
+  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: true },
+  { name: 'Reports', href: '/agent/reports', icon: BarChart3, current: false },
   ...(userRole === 'customer_admin'
     ? [{ name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: false }]
-    : [])
+    : []),
 ];
 
-export default function CustomerSummaryPage() {
+export default function AgentSummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [navigation, setNavigation] = useState(getNavigation('customer'));
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [navigation, setNavigation] = useState(getNavigation('agent'));
 
   const [filters, setFilters] = useState({
     client: '',
@@ -62,14 +76,14 @@ export default function CustomerSummaryPage() {
 
   useEffect(() => {
     fetchCurrentUser();
-    fetchSummaryData();
+    fetchMyRequests();
   }, []);
 
   useEffect(() => {
     let filtered = [...requests];
 
     if (filters.client) {
-      filtered = filtered.filter(request =>
+      filtered = filtered.filter(request => 
         request.client.toLowerCase().includes(filters.client.toLowerCase())
       );
     }
@@ -84,23 +98,26 @@ export default function CustomerSummaryPage() {
 
     if (filters.startDate) {
       const startDate = new Date(filters.startDate);
-      filtered = filtered.filter(request => new Date(request.createdAt) >= startDate);
+      filtered = filtered.filter(request => 
+        new Date(request.createdAt) >= startDate
+      );
     }
 
     if (filters.endDate) {
       const endDate = new Date(filters.endDate);
       endDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(request => new Date(request.createdAt) <= endDate);
+      filtered = filtered.filter(request => 
+        new Date(request.createdAt) <= endDate
+      );
     }
 
     if (filters.search) {
       const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        request =>
-          request.serviceQueueId.toLowerCase().includes(searchTerm) ||
-          request.client.toLowerCase().includes(searchTerm) ||
-          request.serviceRequestNarrative.toLowerCase().includes(searchTerm) ||
-          request.company.companyName.toLowerCase().includes(searchTerm)
+      filtered = filtered.filter(request => 
+        request.serviceQueueId.toLowerCase().includes(searchTerm) ||
+        request.client.toLowerCase().includes(searchTerm) ||
+        request.serviceRequestNarrative.toLowerCase().includes(searchTerm) ||
+        request.company.companyName.toLowerCase().includes(searchTerm)
       );
     }
 
@@ -113,26 +130,29 @@ export default function CustomerSummaryPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.user) {
+          setCurrentUser(data.user);
           setNavigation(getNavigation(data.user.role));
         }
       }
-    } catch {}
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+    }
   };
 
-  const fetchSummaryData = async () => {
+  const fetchMyRequests = async () => {
     try {
-      const response = await fetch('/api/customer/summary');
+      const response = await fetch('/api/agent/summary');
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
       }
-    } catch {} finally {
+    } finally {
       setLoading(false);
     }
   };
 
   const handleAddServiceRequest = () => {
-    window.location.href = '/customer';
+    window.location.href = '/admin/customers/requests';
   };
 
   const getStatusColor = (status: string) => {
@@ -165,7 +185,7 @@ export default function CustomerSummaryPage() {
 
   if (loading) {
     return (
-      <DashboardLayout navigation={navigation} title="Summary">
+      <DashboardLayout navigation={navigation} title="">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#087055]"></div>
         </div>
@@ -174,10 +194,20 @@ export default function CustomerSummaryPage() {
   }
 
   return (
-    <DashboardLayout navigation={navigation} title="Summary">
+    <DashboardLayout navigation={navigation} title="">
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
+        <div className="mb-6">
+          <div className="flex items-center space-x-4 mb-4">
+            <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
+            <div className="ml-auto">
+              <Button
+                onClick={handleAddServiceRequest}
+                className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
+              >
+                Add Service Request
+              </Button>
+            </div>
+          </div>
         </div>
 
         <div className="flex gap-4 items-center py-4">
@@ -185,7 +215,7 @@ export default function CustomerSummaryPage() {
             <Input
               placeholder="Search"
               value={filters.search}
-              onChange={e => setFilters({ ...filters, search: e.target.value })}
+              onChange={(e) => setFilters({...filters, search: e.target.value})}
               className="border-0 shadow-none bg-gray-50 placeholder-gray-500"
             />
           </div>
@@ -193,14 +223,14 @@ export default function CustomerSummaryPage() {
           <div className="w-48">
             <Select
               value={filters.client || undefined}
-              onValueChange={value => setFilters({ ...filters, client: value || '' })}
+              onValueChange={(value) => setFilters({...filters, client: value || ''})}
             >
               <SelectTrigger className="border-0 shadow-none bg-gray-50">
                 <SelectValue placeholder="Select Clients" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="__all__">All Clients</SelectItem>
-                {getUniqueClients().map(client => (
+                {getUniqueClients().map((client) => (
                   <SelectItem key={client} value={client}>
                     {client}
                   </SelectItem>
@@ -212,14 +242,12 @@ export default function CustomerSummaryPage() {
           <div className="w-48">
             <Select
               value={filters.status || undefined}
-              onValueChange={value =>
-                setFilters({ ...filters, status: value === '__all__' ? '' : value || '' })
-              }
+              onValueChange={(value) => setFilters({...filters, status: value === '__all__' ? '' : value || ''})}
             >
               <SelectTrigger className="border-0 shadow-none bg-gray-50">
                 <SelectValue placeholder="Select Status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white">
                 <SelectItem value="__all__">All Status</SelectItem>
                 <SelectItem value="new">New</SelectItem>
                 <SelectItem value="open">Open</SelectItem>
@@ -228,13 +256,6 @@ export default function CustomerSummaryPage() {
               </SelectContent>
             </Select>
           </div>
-
-          <Button
-            onClick={handleAddServiceRequest}
-            className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
-          >
-            Add Service Request
-          </Button>
         </div>
 
         <Card className="shadow-sm border-0">
@@ -243,56 +264,38 @@ export default function CustomerSummaryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Client
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Serv Que ID
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">
-                      Status
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Service Request Narrative
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Service Que Category
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Assigned To:
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Due Date:
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Modified By:
-                    </TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">
-                      Created On:
-                    </TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Client</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Serv Que ID</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Request Narrative</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Que Category</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned By</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By</TableHead>
+                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRequests.length > 0 ? (
                     filteredRequests.map((request, index) => (
-                      <TableRow
-                        key={request.id}
+                      <TableRow 
+                        key={request.id} 
                         className={`hover:bg-gray-50 border-0 ${
                           index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                         }`}
                       >
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="font-medium text-gray-900">{request.client}</div>
+                          <div className="font-medium text-gray-900">
+                            {request.client}
+                          </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="font-medium text-[#087055]">{request.serviceQueueId}</div>
+                          <div className="font-medium text-[#087055]">
+                            {request.serviceQueueId}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center py-4 px-6 border-0">
-                          <Badge
-                            className={`font-semibold px-3 py-1 ${getStatusColor(
-                              request.taskStatus
-                            )}`}
-                          >
+                          <Badge className={`font-semibold px-3 py-1 ${getStatusColor(request.taskStatus)}`}>
                             {request.taskStatus.replace('_', ' ')}
                           </Badge>
                         </TableCell>
@@ -303,16 +306,12 @@ export default function CustomerSummaryPage() {
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
-                            {request.serviceQueueCategory
-                              .replace('_', ' ')
-                              .replace(/\b\w/g, l => l.toUpperCase())}
+                            {request.serviceQueueCategory.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
                           <div className="text-gray-600">
-                            {request.assignedTo
-                              ? `${request.assignedTo.firstName} ${request.assignedTo.lastName}`
-                              : 'Not Assigned'}
+                            {request.assignedBy.firstName} {request.assignedBy.lastName}
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
@@ -326,17 +325,19 @@ export default function CustomerSummaryPage() {
                           </div>
                         </TableCell>
                         <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">{formatDate(request.createdAt)}</div>
+                          <div className="text-gray-600">
+                            {formatDate(request.createdAt)}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
                   ) : (
                     <TableRow className="border-0">
-                      <TableCell
-                        colSpan={9}
-                        className="text-center py-12 text-gray-500 border-0"
-                      >
-                        No requests found matching your filters.
+                      <TableCell colSpan={9} className="text-center py-12 text-gray-500 border-0">
+                        {filters.search || filters.client || filters.status ? 
+                          'No requests found matching your filters.' : 
+                          'No requests assigned to you yet.'
+                        }
                       </TableCell>
                     </TableRow>
                   )}

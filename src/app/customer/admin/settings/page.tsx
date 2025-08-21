@@ -5,152 +5,255 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { 
+  Building2, 
   BarChart3,
-  Home
+  Settings,
+  Trash2,
+  RefreshCw,
+  CheckCircle,
+  XCircle,
+  X
 } from 'lucide-react';
 
-interface ServiceRequest {
+interface User {
   id: string;
-  serviceQueueId: string;
-  client: string;
-  serviceRequestNarrative: string;
-  taskStatus: string;
-  serviceQueueCategory: string;
-  dueDate: string | null;
-  createdAt: string;
-  updatedAt: string;
-  assignedTo?: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  assignedBy: {
-    id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  loginCode?: string;
+}
+
+interface RecentActivity {
+  id: string;
+  user: {
     firstName: string;
     lastName: string;
   };
-  company: {
-    companyName: string;
-  };
+  description: string;
+  timestamp: string;
+}
+
+interface Toast {
+  id: string;
+  message: string;
+  type: 'success' | 'error';
 }
 
 const navigation = [
-  { name: 'All Request', href: '/agent', icon: Home, current: false },
-  { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: true },
-  { name: 'Reports', href: '/agent/reports', icon: BarChart3, current: false },
+  { name: 'Create Request', href: '/customer', icon: Building2, current: false },
+  { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
+  { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
+  { name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: true }
 ];
 
-export default function AgentSummaryPage() {
-  const [requests, setRequests] = useState<ServiceRequest[]>([]);
-  const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
+export default function CustomerAdminSettingsPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
-
-  const [filters, setFilters] = useState({
-    client: '',
-    assignedBy: '',
-    status: '',
-    startDate: '',
-    endDate: '',
-    search: ''
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [showDetailsForm, setShowDetailsForm] = useState(false);
+  const [isTableTransitioning, setIsTableTransitioning] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    loginCode: generateLoginCode(),
   });
 
+  const [editableDetails, setEditableDetails] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    loginCode: '',
+  });
+
+  const showToast = (message: string, type: 'success' | 'error') => {
+    const id = Math.random().toString(36).substr(2, 9);
+    const newToast = { id, message, type };
+    setToasts(prev => [...prev, newToast]);
+    
+    setTimeout(() => {
+      setToasts(prev => prev.filter(toast => toast.id !== id));
+    }, 5000);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  };
+
   useEffect(() => {
-    fetchMyRequests();
+    fetchUsers();
+    fetchRecentActivity();
   }, []);
 
-  useEffect(() => {
-    let filtered = [...requests];
-
-    if (filters.client) {
-      filtered = filtered.filter(request => 
-        request.client.toLowerCase().includes(filters.client.toLowerCase())
-      );
-    }
-
-    if (filters.assignedBy) {
-      filtered = filtered.filter(request => request.assignedBy.id === filters.assignedBy);
-    }
-
-    if (filters.status) {
-      filtered = filtered.filter(request => request.taskStatus === filters.status);
-    }
-
-    if (filters.startDate) {
-      const startDate = new Date(filters.startDate);
-      filtered = filtered.filter(request => 
-        new Date(request.createdAt) >= startDate
-      );
-    }
-
-    if (filters.endDate) {
-      const endDate = new Date(filters.endDate);
-      endDate.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(request => 
-        new Date(request.createdAt) <= endDate
-      );
-    }
-
-    if (filters.search) {
-      const searchTerm = filters.search.toLowerCase();
-      filtered = filtered.filter(request => 
-        request.serviceQueueId.toLowerCase().includes(searchTerm) ||
-        request.client.toLowerCase().includes(searchTerm) ||
-        request.serviceRequestNarrative.toLowerCase().includes(searchTerm) ||
-        request.company.companyName.toLowerCase().includes(searchTerm)
-      );
-    }
-
-    setFilteredRequests(filtered);
-  }, [requests, filters]);
-
-  const fetchMyRequests = async () => {
+  const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/agent/summary');
+      const response = await fetch('/api/customer/admin/users');
       if (response.ok) {
         const data = await response.json();
-        setRequests(data.requests || []);
+        setUsers(data.users || []);
+      } else {
+        setUsers([]);
       }
+    } catch (error) {
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddServiceRequest = () => {
-    window.location.href = '/admin/customers/requests';
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'new':
-        return 'bg-blue-100 text-blue-800';
-      case 'open':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'in_progress':
-        return 'bg-orange-100 text-orange-800';
-      case 'closed':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  const fetchRecentActivity = async () => {
+    try {
+      const response = await fetch('/api/customer/admin/activity');
+      if (response.ok) {
+        const data = await response.json();
+        setRecentActivity(data.activities || []);
+      }
+    } catch (error) {
+      setRecentActivity([]);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
+  function generateLoginCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 7; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+  }
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim()) {
+      showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/customer/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setShowAddUser(false);
+        setFormData({ firstName: '', lastName: '', email: '', loginCode: generateLoginCode() });
+        await fetchUsers();
+        showToast(result.message || 'User created successfully!', 'success');
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to create user', 'error');
+      }
+    } catch (error) {
+      showToast('Failed to add user. Please try again.', 'error');
+    }
   };
 
-  const getUniqueClients = () => {
-    const clients = [...new Set(requests.map(request => request.client))];
-    return clients.sort();
+  const handleViewDetails = (user: User) => {
+    setIsTableTransitioning(true);
+    
+    setTimeout(() => {
+      setSelectedUser(user);
+      setEditableDetails({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        loginCode: user.loginCode || generateLoginCode(),
+      });
+      setShowDetailsForm(true);
+      setIsTableTransitioning(false);
+    }, 300);
   };
+
+  const handleBackFromDetails = () => {
+    setIsTableTransitioning(true);
+    
+    setTimeout(() => {
+      setShowDetailsForm(false);
+      setSelectedUser(null);
+      setIsTableTransitioning(false);
+    }, 300);
+  };
+
+  const handleBackToUsers = () => {
+    setIsTableTransitioning(true);
+    
+    setTimeout(() => {
+      setShowAddUser(false);
+      setFormData({ firstName: '', lastName: '', email: '', loginCode: generateLoginCode() });
+      setIsTableTransitioning(false);
+    }, 300);
+  };
+
+  const handleSaveDetails = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+
+    try {
+      const response = await fetch('/api/customer/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          ...editableDetails
+        }),
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        showToast('User details updated successfully', 'success');
+        handleBackFromDetails();
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to update user details', 'error');
+      }
+    } catch (error) {
+      showToast('Failed to save user details', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/customer/admin/users', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (response.ok) {
+        await fetchUsers();
+        showToast('User deleted successfully', 'success');
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to delete user', 'error');
+      }
+    } catch (error) {
+      showToast('Failed to delete user', 'error');
+    }
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -167,154 +270,360 @@ export default function AgentSummaryPage() {
       <div className="space-y-6">
         <div className="mb-6">
           <div className="flex items-center space-x-4 mb-4">
-            <h1 className="text-3xl font-bold text-gray-900">Tasks</h1>
-            <div className="ml-auto">
-              <Button
-                onClick={handleAddServiceRequest}
-                className="bg-[#087055] hover:bg-[#065a42] text-white px-6"
+            <h1 className="text-3xl font-bold text-gray-900">
+              {showDetailsForm ? 'User Details' : 'Users'}
+            </h1>
+            {showDetailsForm && (
+              <Button 
+                onClick={handleBackFromDetails}
+                variant="outline"
+                className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
               >
-                Add Service Request
+                Back to Users
+              </Button>
+            )}
+          </div>
+          
+          {!showDetailsForm && !showAddUser && (
+            <div className="flex items-center space-x-4">
+              <Input
+                placeholder="Search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-80"
+              />
+              <Button 
+                className="bg-[#068d1f] hover:bg-[#087055] text-white px-6 py-2 font-medium"
+                onClick={() => setShowAddUser(true)}
+              >
+                Add User
               </Button>
             </div>
-          </div>
+          )}
         </div>
 
-        <div className="flex gap-4 items-center py-4">
-          <div className="flex-1">
-            <Input
-              placeholder="Search"
-              value={filters.search}
-              onChange={(e) => setFilters({...filters, search: e.target.value})}
-              className="border-0 shadow-none bg-gray-50 placeholder-gray-500"
-            />
+        {!showAddUser && (
+          <div className={`transition-all duration-300 ease-in-out ${
+            isTableTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'
+          }`}>
+            {showDetailsForm ? (
+              <div className="w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="shadow-sm border-0">
+                    <CardContent className="p-8">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">User Details</h3>
+                      <form onSubmit={handleSaveDetails} className="space-y-6">
+                        <div>
+                          <Label htmlFor="detailsFirstName" className="text-sm font-medium text-gray-700 mb-2 block">
+                            First Name
+                          </Label>
+                          <Input
+                            id="detailsFirstName"
+                            value={editableDetails.firstName}
+                            onChange={(e) => setEditableDetails({...editableDetails, firstName: e.target.value})}
+                            className="h-12"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="detailsLastName" className="text-sm font-medium text-gray-700 mb-2 block">
+                            Last Name
+                          </Label>
+                          <Input
+                            id="detailsLastName"
+                            value={editableDetails.lastName}
+                            onChange={(e) => setEditableDetails({...editableDetails, lastName: e.target.value})}
+                            className="h-12"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="detailsEmail" className="text-sm font-medium text-gray-700 mb-2 block">
+                            Email
+                          </Label>
+                          <Input
+                            id="detailsEmail"
+                            type="email"
+                            value={editableDetails.email}
+                            onChange={(e) => setEditableDetails({...editableDetails, email: e.target.value})}
+                            className="h-12"
+                          />
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="detailsLoginCode" className="text-sm font-medium text-gray-700 mb-2 block">
+                            Code
+                          </Label>
+                          <div className="relative">
+                            <Input
+                              id="detailsLoginCode"
+                              value={editableDetails.loginCode}
+                              onChange={(e) => setEditableDetails({...editableDetails, loginCode: e.target.value})}
+                              className="h-12 pr-12"
+                              maxLength={7}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setEditableDetails({...editableDetails, loginCode: generateLoginCode()})}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              <RefreshCw className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="pt-4">
+                          <Button 
+                            type="submit"
+                            className="bg-[#068d1f] hover:bg-[#087055] text-white px-8 py-3"
+                          >
+                            Save
+                          </Button>
+                        </div>
+                      </form>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card className="shadow-sm border-0">
+                    <CardContent className="p-8">
+                      <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h3>
+                      <div className="space-y-4">
+                        {recentActivity.length > 0 ? (
+                          recentActivity.slice(0, 5).map((activity) => (
+                            <div key={activity.id} className="flex items-start space-x-3">
+                              <div className="flex-shrink-0">
+                                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                                  <span className="text-white text-sm font-medium">
+                                    {activity.user.firstName.charAt(0)}{activity.user.lastName.charAt(0)}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <span className="font-medium text-gray-900">
+                                    {activity.user.firstName} {activity.user.lastName}
+                                  </span>
+                                  <span className="text-sm text-gray-500">{activity.timestamp}</span>
+                                </div>
+                                <p className="text-sm text-gray-600">{activity.description}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500">No recent activity</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              <Card className="shadow-sm border-0">
+                <CardContent className="p-0">
+                  <div className="overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">First Name</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Last Name</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Email</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Code</TableHead>
+                          <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredUsers.length > 0 ? (
+                          filteredUsers.map((user, index) => (
+                            <TableRow 
+                              key={user.id} 
+                              className={`hover:bg-gray-50 border-0 ${
+                                index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                              }`}
+                            >
+                              <TableCell className="py-4 px-6 border-0">
+                                <div className="font-medium text-gray-900">
+                                  {user.firstName}
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-4 px-6 border-0">
+                                <div className="font-medium text-gray-900">
+                                  {user.lastName}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-gray-600 py-4 px-6 border-0">
+                                {user.email}
+                              </TableCell>
+                              <TableCell className="text-gray-600 py-4 px-6 border-0">
+                                {user.loginCode}
+                              </TableCell>
+                              <TableCell className="text-center py-4 px-6 border-0">
+                                <div className="flex space-x-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-white bg-[#068d1f] border-[#068d1f] hover:bg-[#087055] hover:text-white hover:border-[#087055] px-3 py-2 text-xs font-medium rounded"
+                                    onClick={() => handleViewDetails(user)}
+                                  >
+                                    View Details
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-red-600 border-red-400 hover:bg-red-500 hover:text-white px-3 py-2 rounded"
+                                    onClick={() => handleDeleteUser(user.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow className="border-0">
+                            <TableCell colSpan={5} className="text-center py-12 text-gray-500 border-0">
+                              No users found.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
+        )}
 
-          <div className="w-48">
-            <Select
-              value={filters.client || undefined}
-              onValueChange={(value) => setFilters({...filters, client: value || ''})}
-            >
-              <SelectTrigger className="border-0 shadow-none bg-gray-50">
-                <SelectValue placeholder="Select Clients" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Clients</SelectItem>
-                {getUniqueClients().map((client) => (
-                  <SelectItem key={client} value={client}>
-                    {client}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        {showAddUser && (
+          <div className="w-full max-w-2xl">
+            <Card className="shadow-sm border-0">
+              <CardContent className="p-8">
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-gray-900">Add User</h2>
+                  <Button 
+                    onClick={handleBackToUsers}
+                    variant="outline"
+                    className="text-[#087055] border-[#087055] hover:bg-[#087055] hover:text-white"
+                  >
+                    Back to Users
+                  </Button>
+                </div>
+                
+                <form onSubmit={handleAddUser} className="space-y-6">
+                  <div>
+                    <Label htmlFor="firstName" className="text-sm font-medium text-gray-700 mb-2 block">
+                      First Name
+                    </Label>
+                    <Input
+                      id="firstName"
+                      placeholder="Enter first name"
+                      value={formData.firstName}
+                      onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="lastName" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Last Name
+                    </Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Enter last name"
+                      value={formData.lastName}
+                      onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="Enter email address"
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                      required
+                      className="h-12"
+                    />
+                  </div>
 
-          <div className="w-48">
-            <Select
-              value={filters.status || undefined}
-              onValueChange={(value) => setFilters({...filters, status: value === '__all__' ? '' : value || ''})}
-            >
-              <SelectTrigger className="border-0 shadow-none bg-gray-50">
-                <SelectValue placeholder="Select Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__all__">All Status</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <Card className="shadow-sm border-0">
-          <CardContent className="p-0">
-            <div className="overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#087055] hover:bg-[#087055] border-0">
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Client</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Serv Que ID</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-center border-0">Status</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Request Narrative</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Service Que Category</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Assigned By</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Due Date</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Modified By</TableHead>
-                    <TableHead className="text-white font-medium py-4 px-6 text-left border-0">Created On</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRequests.length > 0 ? (
-                    filteredRequests.map((request, index) => (
-                      <TableRow 
-                        key={request.id} 
-                        className={`hover:bg-gray-50 border-0 ${
-                          index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                        }`}
+                  <div>
+                    <Label htmlFor="loginCode" className="text-sm font-medium text-gray-700 mb-2 block">
+                      Code
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="loginCode"
+                        value={formData.loginCode}
+                        onChange={(e) => setFormData({...formData, loginCode: e.target.value})}
+                        className="h-12 pr-12"
+                        maxLength={7}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, loginCode: generateLoginCode()})}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="font-medium text-gray-900">
-                            {request.client}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="font-medium text-[#087055]">
-                            {request.serviceQueueId}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-center py-4 px-6 border-0">
-                          <Badge className={`font-semibold px-3 py-1 ${getStatusColor(request.taskStatus)}`}>
-                            {request.taskStatus.replace('_', ' ')}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600 max-w-xs truncate">
-                            {request.serviceRequestNarrative}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
-                            {request.serviceQueueCategory.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
-                            {request.assignedBy.firstName} {request.assignedBy.lastName}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
-                            {request.dueDate ? formatDate(request.dueDate) : 'No Due Date'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
-                            {request.assignedBy.firstName} {request.assignedBy.lastName}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4 px-6 border-0">
-                          <div className="text-gray-600">
-                            {formatDate(request.createdAt)}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow className="border-0">
-                      <TableCell colSpan={9} className="text-center py-12 text-gray-500 border-0">
-                        {filters.search || filters.client || filters.status ? 
-                          'No requests found matching your filters.' : 
-                          'No requests assigned to you yet.'
-                        }
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                        <RefreshCw className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="pt-4 flex space-x-4">
+                    <Button 
+                      type="submit" 
+                      className="bg-[#068d1f] hover:bg-[#087055] text-white px-8 py-3"
+                    >
+                      Save
+                    </Button>
+                    <Button 
+                      type="button"
+                      variant="outline"
+                      onClick={handleBackToUsers}
+                      className="px-8 py-3"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="fixed top-4 right-4 z-50 space-y-2">
+          {toasts.map((toast) => (
+            <div
+              key={toast.id}
+              className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg transition-all duration-300 ${
+                toast.type === 'success'
+                  ? 'bg-green-50 border border-green-200 text-green-800'
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}
+            >
+              {toast.type === 'success' ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-600" />
+              )}
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button
+                onClick={() => removeToast(toast.id)}
+                className={`ml-2 ${
+                  toast.type === 'success' ? 'text-green-600 hover:text-green-800' : 'text-red-600 hover:text-red-800'
+                }`}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          </CardContent>
-        </Card>
+          ))}
+        </div>
       </div>
     </DashboardLayout>
   );
