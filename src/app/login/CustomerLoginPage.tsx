@@ -192,9 +192,6 @@ export default function CustomerLoginPage() {
                         maxLength={7}
                         minLength={7}
                       />
-                      <p className="mt-1 text-xs text-gray-500">
-                        Admin tab is for customer admin role only
-                      </p>
                     </div>
                   </>
                 )}
@@ -219,23 +216,7 @@ export default function CustomerLoginPage() {
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500 mb-2">Other login options:</p>
-            <div className="flex justify-center space-x-4">
-              <a
-                href="/login/agent"
-                className="text-sm text-[#087055] hover:underline"
-              >
-                Agent Login
-              </a>
-              <a
-                href="/login/superadmin"
-                className="text-sm text-[#087055] hover:underline"
-              >
-                Super Admin Login
-              </a>
-            </div>
-          </div>
+      
         </div>
       </div>
     </div>

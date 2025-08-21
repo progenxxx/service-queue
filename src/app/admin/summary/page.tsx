@@ -42,22 +42,6 @@ interface ServiceRequest {
   };
 }
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-interface SummaryStats {
-  totalRequests: number;
-  newRequests: number;
-  openRequests: number;
-  inProgressRequests: number;
-  closedRequests: number;
-  overdueRequests: number;
-}
-
 const navigation = [
   { name: 'All Customers', href: '/admin/customers', icon: Building2, current: true },
   { name: 'All Requests', href: '/admin/summary', icon: Building2, current: false },
@@ -70,7 +54,6 @@ const navigation = [
 export default function SummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState({
@@ -84,7 +67,6 @@ export default function SummaryPage() {
 
   useEffect(() => {
     fetchSummaryData();
-    fetchUsers();
   }, []);
 
   useEffect(() => {
@@ -141,18 +123,6 @@ export default function SummaryPage() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/admin/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
     }
   };
 

@@ -39,22 +39,6 @@ interface ServiceRequest {
   };
 }
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-interface SummaryStats {
-  totalRequests: number;
-  newRequests: number;
-  openRequests: number;
-  inProgressRequests: number;
-  closedRequests: number;
-  overdueRequests: number;
-}
-
 const navigation = [
   { name: 'All Request', href: '/agent', icon: Home, current: false },
   { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: true },
@@ -64,7 +48,6 @@ const navigation = [
 export default function AgentSummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState({
@@ -78,7 +61,6 @@ export default function AgentSummaryPage() {
 
   useEffect(() => {
     fetchMyRequests();
-    fetchUsers();
   }, []);
 
   useEffect(() => {
@@ -135,18 +117,6 @@ export default function AgentSummaryPage() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/admin/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
     }
   };
 

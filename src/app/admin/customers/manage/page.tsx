@@ -327,7 +327,7 @@ export default function CustomerManagementPage() {
     <DashboardLayout navigation={navigation} title="">
       <div className="space-y-6">
         <div className="mb-6">
-          <div className="flex items-center space-x-4 mb-4">
+          {/* <div className="flex items-center space-x-4 mb-4">
             <h1 className="text-3xl font-bold text-gray-900">
               {showUsersTable ? 'Customers User' : showDetailsForm ? 'Customer Details' : 'Customers'}
             </h1>
@@ -340,7 +340,7 @@ export default function CustomerManagementPage() {
                 ← Back to Customers
               </Button>
             )}
-          </div>
+          </div> */}
           
           {!showUsersTable && !showDetailsForm && !showAddCustomer && (
             <div className="flex items-center space-x-4">

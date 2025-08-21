@@ -30,12 +30,6 @@ interface User {
   companyId?: string;
 }
 
-interface Company {
-  id: string;
-  companyName: string;
-  primaryContact: string;
-}
-
 interface Agent {
   id: string;
   firstName: string;

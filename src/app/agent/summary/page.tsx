@@ -2,26 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
-  Building2, 
-  UserCheck, 
   BarChart3,
-  Settings,
-  Users,
-  FileText,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  Home,
-  Plus
+  Home
 } from 'lucide-react';
 
 interface ServiceRequest {
@@ -50,22 +39,6 @@ interface ServiceRequest {
   };
 }
 
-interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
-interface SummaryStats {
-  totalRequests: number;
-  newRequests: number;
-  openRequests: number;
-  inProgressRequests: number;
-  closedRequests: number;
-  overdueRequests: number;
-}
-
 const navigation = [
   { name: 'All Request', href: '/agent', icon: Home, current: false },
   { name: 'My Queues', href: '/agent/summary', icon: BarChart3, current: true },
@@ -75,11 +48,7 @@ const navigation = [
 export default function AgentSummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [summaryStats, setSummaryStats] = useState<SummaryStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   const [filters, setFilters] = useState({
     client: '',
@@ -92,7 +61,6 @@ export default function AgentSummaryPage() {
 
   useEffect(() => {
     fetchMyRequests();
-    fetchUsers();
   }, []);
 
   useEffect(() => {
@@ -146,41 +114,12 @@ export default function AgentSummaryPage() {
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
-        setSummaryStats(data.summary || null);
       }
     } catch (error) {
       console.error('Failed to fetch my requests data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/admin/users');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    }
-  };
-
-  const resetFilters = () => {
-    setFilters({
-      client: '',
-      assignedBy: '',
-      status: '',
-      startDate: '',
-      endDate: '',
-      search: ''
-    });
-  };
-
-  const handleViewDetails = (request: ServiceRequest) => {
-    setSelectedRequest(request);
-    setShowDetailsModal(true);
   };
 
   const handleAddServiceRequest = () => {
