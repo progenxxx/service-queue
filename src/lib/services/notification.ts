@@ -6,7 +6,7 @@ interface CreateNotificationData {
   type: 'request_created' | 'request_updated' | 'request_assigned' | 'note_added' | 'status_changed' | 'due_date_reminder' | 'user_created' | 'company_created';
   title: string;
   message: string;
-  metadata?: string; // Use metadata instead of relatedId/relatedType
+  metadata?: string;
 }
 
 interface CreateActivityLogData {
@@ -27,26 +27,22 @@ export const notificationService = {
         title: data.title,
         message: data.message,
         metadata: data.metadata,
-        read: false, // Changed from isRead to read
+        read: false,
       });
-    } catch (error) {
-      console.error('Failed to create notification:', error);
-    }
+    } catch {}
   },
 
   async createActivityLog(data: CreateActivityLogData) {
     try {
       await db.insert(activityLogs).values({
-        type: data.type, // Changed from action to type
+        type: data.type,
         description: data.description,
         userId: data.userId,
         companyId: data.companyId,
-        requestId: data.requestId, // Changed from entityId to requestId
+        requestId: data.requestId,
         metadata: data.metadata,
       });
-    } catch (error) {
-      console.error('Failed to create activity log:', error);
-    }
+    } catch {}
   },
 
   async notifyUserCreated(adminUserId: string, newUser: { id: string; firstName: string; lastName: string; email: string; companyId?: string }) {
@@ -55,7 +51,7 @@ export const notificationService = {
       type: 'user_created',
       title: 'New User Created',
       message: `User ${newUser.firstName} ${newUser.lastName} has been created successfully`,
-      metadata: JSON.stringify({ userId: newUser.id, userType: 'user' }), // Store related info in metadata
+      metadata: JSON.stringify({ userId: newUser.id, userType: 'user' }),
     });
 
     await this.createActivityLog({
@@ -70,7 +66,7 @@ export const notificationService = {
   async notifyCustomerDetailsUpdated(adminUserId: string, customerId: string, customerName: string) {
     await this.createNotification({
       userId: adminUserId,
-      type: 'company_created', // You might want to change this to a more appropriate type
+      type: 'company_created',
       title: 'Customer Details Updated',
       message: `Customer details for ${customerName} have been updated successfully`,
       metadata: JSON.stringify({ companyId: customerId, entityType: 'company' }),

@@ -35,6 +35,7 @@ export const GET = requireRole(['super_admin'])(
               email: true,
               role: true,
               isActive: true,
+              loginCode: true, 
             },
           },
         },
@@ -108,7 +109,7 @@ export const POST = requireRole(['super_admin'])(
 
         await db.update(users)
           .set({ 
-            loginCode: newCompanyCode,
+            loginCode: newCompanyCode, 
             updatedAt: new Date()
           })
           .where(eq(users.companyId, validatedData.customerId));
@@ -120,7 +121,7 @@ export const POST = requireRole(['super_admin'])(
               firstName: customerAdmin.firstName,
               lastName: customerAdmin.lastName,
               email: customerAdmin.email,
-              loginCode: newCompanyCode,
+              loginCode: newCompanyCode, 
               companyName: existingCustomer.companyName,
             });
             console.log(`Reset code email sent successfully to ${customerAdmin.email}`);
@@ -185,13 +186,17 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
+      console.log('Generated company code:', companyCode);
+
       const [newCompany] = await db.insert(companies).values({
         companyName: validatedData.companyName,
-        companyCode: companyCode,
+        companyCode: companyCode, 
         primaryContact: validatedData.primaryContact,
         phone: validatedData.phone || '',
         email: validatedData.email,
       }).returning();
+
+      console.log('Created company:', newCompany);
 
       const nameParts = validatedData.primaryContact.trim().split(/\s+/);
       const firstName = nameParts[0] || validatedData.primaryContact;
@@ -201,19 +206,20 @@ export const POST = requireRole(['super_admin'])(
         firstName: firstName,
         lastName: lastName,
         email: validatedData.email,
-        loginCode: companyCode,
+        loginCode: companyCode, 
         role: 'customer_admin',
         companyId: newCompany.id,
         isActive: true,
       }).returning();
 
-      console.log(`Created customer admin user: ${newUser.id} for company: ${newCompany.id}`);
+      console.log('Created user with loginCode:', newUser.loginCode);
+      console.log('Company code matches user loginCode:', newCompany.companyCode === newUser.loginCode);
 
       emailService.sendCustomerAdminWelcome(validatedData.email, {
         firstName: firstName,
         lastName: lastName,
         email: validatedData.email,
-        loginCode: companyCode,
+        loginCode: companyCode, 
         companyName: validatedData.companyName,
       }).then(() => {
         console.log(`Customer admin welcome email sent successfully to ${validatedData.email}`);
@@ -232,6 +238,7 @@ export const POST = requireRole(['super_admin'])(
               email: true,
               role: true,
               isActive: true,
+              loginCode: true,
             },
           },
         },
@@ -241,7 +248,12 @@ export const POST = requireRole(['super_admin'])(
         success: true, 
         customer: customerWithUsers,
         companyCode: companyCode,
-        message: `Company "${validatedData.companyName}" created successfully! Customer admin user created with login code ${companyCode} sent to ${validatedData.email}.`
+        message: `Company "${validatedData.companyName}" created successfully! Customer admin user created with login code ${companyCode} sent to ${validatedData.email}.`,
+        debug: {
+          companyCode: newCompany.companyCode,
+          userLoginCode: newUser.loginCode,
+          codesMatch: newCompany.companyCode === newUser.loginCode
+        }
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -407,6 +419,7 @@ export const PUT = requireRole(['super_admin'])(
               email: true,
               role: true,
               isActive: true,
+              loginCode: true, 
             },
           },
         },

@@ -28,7 +28,6 @@ export const POST = requireRole(['super_admin'])(
       const validatedData = createUserSchema.parse(body);
       const currentUserId = req.headers.get('x-user-id');
 
-      // Check if user already exists
       const existingUser = await db.query.users.findFirst({
         where: eq(users.email, validatedData.email),
       });
@@ -40,21 +39,18 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Generate login code
       const loginCode = generateLoginCode();
 
-      // Create new user
       const [newUser] = await db.insert(users).values({
         firstName: validatedData.firstName,
         lastName: validatedData.lastName,
         email: validatedData.email,
-        loginCode: loginCode,
+        loginCode,
         role: validatedData.role,
         companyId: validatedData.customerId,
         isActive: true,
       }).returning();
 
-      // Send welcome email and notification (non-blocking)
       try {
         const company = await db.query.companies.findFirst({
           where: eq(companies.id, validatedData.customerId),
@@ -64,7 +60,7 @@ export const POST = requireRole(['super_admin'])(
           await emailService.sendCustomerWelcome(newUser.email, {
             firstName: newUser.firstName,
             lastName: newUser.lastName,
-            loginCode: loginCode,
+            loginCode,
             companyName: company.companyName,
           });
         }
@@ -78,10 +74,7 @@ export const POST = requireRole(['super_admin'])(
             companyId: validatedData.customerId,
           });
         }
-      } catch (emailError) {
-        console.error('Failed to send welcome email or create notification:', emailError);
-        // Continue execution - don't fail the user creation for email issues
-      }
+      } catch {}
 
       return NextResponse.json({ 
         success: true,
@@ -97,8 +90,6 @@ export const POST = requireRole(['super_admin'])(
         message: `User "${newUser.firstName} ${newUser.lastName}" has been created successfully with login code ${loginCode}.`
       });
     } catch (error) {
-      console.error('Error in POST /api/admin/customers/users:', error);
-      
       if (error instanceof z.ZodError) {
         return NextResponse.json(
           { error: 'Invalid request data', details: error.issues },
@@ -106,7 +97,6 @@ export const POST = requireRole(['super_admin'])(
         );
       }
 
-      // Check for database constraint errors
       if (error instanceof Error) {
         if (error.message.includes('duplicate key') || error.message.includes('UNIQUE constraint')) {
           return NextResponse.json(
@@ -127,28 +117,20 @@ export const POST = requireRole(['super_admin'])(
 export const DELETE = requireRole(['super_admin'])(
   async (req: NextRequest) => {
     try {
-      console.log('DELETE request received');
-      
-      // Parse request body
       let body;
       try {
         body = await req.json();
-        console.log('Request body:', body);
-      } catch (parseError) {
-        console.error('Failed to parse request body:', parseError);
+      } catch {
         return NextResponse.json(
           { error: 'Invalid JSON in request body' },
           { status: 400 }
         );
       }
 
-      // Validate request data
       let validatedData;
       try {
         validatedData = deleteUserSchema.parse(body);
-        console.log('Validated data:', validatedData);
       } catch (validationError) {
-        console.error('Validation error:', validationError);
         if (validationError instanceof z.ZodError) {
           return NextResponse.json(
             { error: 'Invalid request data', details: validationError.issues },
@@ -160,7 +142,6 @@ export const DELETE = requireRole(['super_admin'])(
 
       const { userId, customerId } = validatedData;
 
-      // Check if user exists and belongs to the specified customer
       let existingUser;
       try {
         existingUser = await db.query.users.findFirst({
@@ -169,9 +150,7 @@ export const DELETE = requireRole(['super_admin'])(
             eq(users.companyId, customerId)
           ),
         });
-        console.log('Existing user found:', existingUser ? 'Yes' : 'No');
-      } catch (dbError) {
-        console.error('Database query error:', dbError);
+      } catch {
         return NextResponse.json(
           { error: 'Database error while searching for user' },
           { status: 500 }
@@ -184,13 +163,10 @@ export const DELETE = requireRole(['super_admin'])(
           { status: 404 }
         );
       }
-
-      // Delete the user
+      
       try {
         await db.delete(users).where(eq(users.id, userId));
-        console.log('User deleted successfully');
-      } catch (deleteError) {
-        console.error('Database delete error:', deleteError);
+      } catch {
         return NextResponse.json(
           { error: 'Failed to delete user from database' },
           { status: 500 }
@@ -202,8 +178,6 @@ export const DELETE = requireRole(['super_admin'])(
         message: `User "${existingUser.firstName} ${existingUser.lastName}" has been deleted successfully.` 
       });
     } catch (error) {
-      console.error('Unexpected error in DELETE /api/admin/customers/users:', error);
-      
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
       return NextResponse.json(

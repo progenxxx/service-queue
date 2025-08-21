@@ -146,7 +146,6 @@ export default function AllCustomersPage() {
         setCustomers(customersWithUsers);
       }
     } catch {
-      // Handle error silently
     } finally {
       setLoading(false);
     }
@@ -160,7 +159,6 @@ export default function AllCustomersPage() {
         setRecentActivity(data.activities || []);
       }
     } catch {
-      // Handle error silently
     }
   };
 
@@ -184,7 +182,6 @@ export default function AllCustomersPage() {
         fetchCustomers();
       }
     } catch {
-      // Handle error silently
     }
   };
 
@@ -216,7 +213,6 @@ export default function AllCustomersPage() {
         }
       }
     } catch {
-      // Handle error silently
     }
   };
 
@@ -269,7 +265,6 @@ export default function AllCustomersPage() {
         }
       }
     } catch {
-      // Handle error silently
     }
   };
 
@@ -373,7 +368,6 @@ export default function AllCustomersPage() {
             </div>
           )}
           
-          {/* Only show user search and Add Customer User button when in users table and not in add user form */}
           {showUsersTable && !showAddUserForm && !showDetailsForm && (
             <div className="flex items-center space-x-4">
               <Input
@@ -392,7 +386,6 @@ export default function AllCustomersPage() {
           )}
         </div>
 
-        {/* Add Customer Form - Only show this when showAddCustomer is true */}
         {showAddCustomer && (
           <div className="w-full max-w-2xl">
             <Card className="shadow-sm border-0">
@@ -480,7 +473,6 @@ export default function AllCustomersPage() {
           </div>
         )}
 
-        {/* Show tables and other content only when NOT in Add Customer mode */}
         {!showAddCustomer && (
           <div className={`transition-all duration-300 ease-in-out ${
             isTableTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'
@@ -489,7 +481,6 @@ export default function AllCustomersPage() {
               <div className="w-full">
                 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Customer Details Card */}
                   <Card className="shadow-sm border-0">
                     <CardContent className="p-8">
                       <h3 className="text-xl font-bold text-gray-900 mb-6">Customer Details</h3>
@@ -576,7 +567,6 @@ export default function AllCustomersPage() {
                             <SelectContent className="bg-white border border-gray-200">
                               <SelectItem value="customer" className="bg-white hover:bg-gray-50">Customer</SelectItem>
                               <SelectItem value="customer_admin" className="bg-white hover:bg-gray-50">Admin</SelectItem>
-                              {/* <SelectItem value="agent" className="bg-white hover:bg-gray-50">Agent</SelectItem> */}
                             </SelectContent>
                           </Select>
                         </div>
@@ -593,7 +583,6 @@ export default function AllCustomersPage() {
                     </CardContent>
                   </Card>
                   
-                  {/* Recent Activity Card */}
                   <Card className="shadow-sm border-0">
                     <CardContent className="p-8">
                       <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h3>
@@ -632,12 +621,6 @@ export default function AllCustomersPage() {
                 <Card className="shadow-sm border-0">
                   <CardContent className="p-8">
                     <div className="mb-6">
-                      {/* <button 
-                        onClick={() => setShowAddUserForm(false)}
-                        className="text-[#087055] hover:text-[#065946] font-medium mb-4"
-                      >
-                        ← Back to Users
-                      </button> */}
                       <h2 className="text-2xl font-bold text-gray-900">Add Customer User</h2>
                     </div>
                     

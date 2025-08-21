@@ -1,4 +1,3 @@
-// src/app/api/admin/request/route.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
@@ -40,7 +39,7 @@ export const GET = requireRole(['super_admin'])(
       });
 
       return NextResponse.json({ notes });
-    } catch (error) {
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
@@ -79,7 +78,6 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
 
       let finalAssignedById = assignedByIdRaw;
 
-      // Check if the assignedByIdRaw is an agent ID, if so get the user ID
       const agentCheck = await db.query.agents.findFirst({
         where: eq(agents.id, assignedByIdRaw),
         with: {
@@ -92,10 +90,8 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
       });
 
       if (agentCheck) {
-        // It's an agent ID, use the associated user ID
         finalAssignedById = agentCheck.user.id;
       } else {
-        // Check if it's a valid user ID
         const userCheck = await db.query.users.findFirst({
           where: eq(users.id, assignedByIdRaw),
         });
@@ -108,7 +104,6 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         }
       }
 
-      // Determine the final company ID based on user role
       let finalCompanyId = companyId;
       if (currentUserRole !== 'super_admin' && currentUserCompanyId) {
         finalCompanyId = currentUserCompanyId;
@@ -144,9 +139,7 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
           assignedToId = result[0].userId;
           primaryContactEmail = result[0].userEmail;
         }
-      } catch (error) {
-        console.error('Error finding primary contact user:', error);
-      }
+      } catch {}
 
       const newRequest = await db.insert(serviceRequests).values({
         serviceQueueId,
@@ -179,14 +172,11 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
             createdBy: requestCreator ? `${requestCreator.firstName} ${requestCreator.lastName}` : 'Unknown',
             priority: dueDate ? 'High' : 'Normal',
           });
-        } catch (emailError) {
-          console.error('Failed to send new request notification email:', emailError);
-        }
+        } catch {}
       }
 
       const files = formData.getAll('files') as File[];
       if (files.length > 0) {
-        console.log(`Processing ${files.length} file uploads...`);
       }
 
       return NextResponse.json({ 
@@ -194,8 +184,7 @@ export const POST = requireRole(['super_admin', 'customer_admin', 'customer'])(
         request: newRequest[0],
         assignedToId: assignedToId ? assignedToId : 'No primary contact found'
       });
-    } catch (error) {
-      console.error('Failed to create service request:', error);
+    } catch {
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

@@ -438,7 +438,6 @@ export default function CustomerManagementPage() {
           )}
         </div>
 
-        {/* Add Customer Form */}
         {showAddCustomer && (
           <div className="w-full max-w-2xl">
             <Card className="shadow-sm border-0">
@@ -525,7 +524,6 @@ export default function CustomerManagementPage() {
           </div>
         )}
 
-        {/* Show tables and other content only when NOT in Add Customer mode */}
         {!showAddCustomer && (
           <div className={`transition-all duration-300 ease-in-out ${
             isTableTransitioning ? 'opacity-0 transform -translate-x-8' : 'opacity-100 transform translate-x-0'
@@ -533,7 +531,6 @@ export default function CustomerManagementPage() {
             {showDetailsForm ? (
               <div className="w-full">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Customer Details Card */}
                   <Card className="shadow-sm border-0">
                     <CardContent className="p-8">
                       <h3 className="text-xl font-bold text-gray-900 mb-6">Customer Details</h3>
@@ -632,7 +629,6 @@ export default function CustomerManagementPage() {
                     </CardContent>
                   </Card>
                   
-                  {/* Recent Activity Card */}
                   <Card className="shadow-sm border-0">
                     <CardContent className="p-8">
                       <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h3>

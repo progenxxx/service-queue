@@ -1,11 +1,9 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 
-// For now, we'll return static data since database might not be fully set up
 export const GET = requireRole(['super_admin'])(
   async () => {
     try {
-      // Default data that will always work
       const defaultMonthlyData = [
         { month: 'Jan', newTickets: 32, wipTickets: 15, closedTickets: 45, totalPastDue: 3 },
         { month: 'Feb', newTickets: 28, wipTickets: 22, closedTickets: 38, totalPastDue: 5 },
@@ -43,7 +41,6 @@ export const GET = requireRole(['super_admin'])(
     } catch (error) {
       console.error('Reports API error:', error);
       
-      // Always return valid data even if there's an error
       return NextResponse.json({
         summary: {
           totalNewTickets: 45,

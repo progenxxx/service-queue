@@ -1,4 +1,3 @@
-// src/app/admin/customers/requests/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -13,11 +12,14 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Building2, UserCheck, BarChart3, Settings, Users, FileText, Upload, X, Send, Loader2 } from 'lucide-react';
 
-const navigation = [
-  { name: 'Create Request', href: '/customer/customers', icon: Building2, current: false },
+// Updated navigation based on user role
+const getNavigation = (userRole: string) => [
+  { name: 'Create Request', href: '/customer', icon: Building2, current: true },
   { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
   { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
-  { name: 'Admin Settings', href: 'customer/admin/settings', icon: Settings, current: false },
+  ...(userRole === 'customer_admin' ? [
+    { name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: false }
+  ] : [])
 ];
 
 interface User {
@@ -40,14 +42,9 @@ interface Agent {
   firstName: string;
   lastName: string;
   email: string;
-  loginCode: string;
-  assignedCompanyIds: string[];
+  role: string;
   isActive: boolean;
-  createdAt: string;
-  assignedCompanies?: Array<{
-    id: string;
-    companyName: string;
-  }>;
+  type: string;
 }
 
 interface NoteLog {
@@ -67,7 +64,7 @@ interface NoteLog {
   };
 }
 
-export default function AdminAllRequestsPage() {
+export default function CustomerRequestPage() {
   const [formData, setFormData] = useState({
     serviceQueueId: generateServiceQueueId(),
     taskStatus: 'new',
@@ -86,19 +83,18 @@ export default function AdminAllRequestsPage() {
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [noteLogs, setNoteLogs] = useState<NoteLog[]>([]);
   const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+  const [navigation, setNavigation] = useState(getNavigation('customer'));
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         await Promise.all([
+          fetchCurrentUser(),
           fetchCompanies(),
           fetchAgents(),
-          fetchUsers(),
-          fetchCurrentUser(),
           fetchNoteLogs()
         ]);
       } catch (error) {
@@ -109,19 +105,32 @@ export default function AdminAllRequestsPage() {
     fetchData();
   }, []);
 
-  const fetchCompanies = async () => {
+  const fetchCurrentUser = async () => {
     try {
-      const response = await fetch('/api/admin/companies');
+      const response = await fetch('/api/auth/me');
       if (response.ok) {
         const data = await response.json();
-        const validCompanies = (data.companies || []).filter(
-          (company: Company) =>
-            company &&
-            typeof company.id === 'string' &&
-            typeof company.companyName === 'string' &&
-            typeof company.primaryContact === 'string'
-        );
-        setCompanies(validCompanies);
+        if (data.user) {
+          setCurrentUser(data.user);
+          setNavigation(getNavigation(data.user.role));
+          setFormData((prev) => ({
+            ...prev,
+            assignedById: data.user.id,
+            companyId: data.user.companyId || '',
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+    }
+  };
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await fetch('/api/customer/companies');
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data.companies || []);
       } else {
         setCompanies([]);
       }
@@ -132,62 +141,15 @@ export default function AdminAllRequestsPage() {
 
   const fetchAgents = async () => {
     try {
-      const response = await fetch('/api/admin/agents');
+      const response = await fetch('/api/customer/agents');
       if (response.ok) {
         const data = await response.json();
-        const validAgents = (data.agents || []).filter(
-          (agent: Agent) =>
-            agent &&
-            typeof agent.id === 'string' &&
-            typeof agent.firstName === 'string' &&
-            typeof agent.lastName === 'string' &&
-            agent.isActive === true
-        );
-        setAgents(validAgents);
+        setAgents(data.agents || []);
       } else {
         setAgents([]);
       }
     } catch (error) {
       setAgents([]);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await fetch('/api/admin/users');
-      if (response.ok) {
-        const data = await response.json();
-        const validUsers = (data.users || []).filter(
-          (user: User) =>
-            user &&
-            typeof user.id === 'string' &&
-            typeof user.firstName === 'string' &&
-            typeof user.lastName === 'string'
-        );
-        setUsers(validUsers);
-      } else {
-        setUsers([]);
-      }
-    } catch (error) {
-      setUsers([]);
-    }
-  };
-
-  const fetchCurrentUser = async () => {
-    try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.user) {
-          setCurrentUser(data.user);
-          setFormData((prev) => ({
-            ...prev,
-            assignedById: data.user.id,
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch current user:', error);
     }
   };
 
@@ -295,7 +257,7 @@ export default function AdminAllRequestsPage() {
         formDataToSend.append('files', file);
       });
 
-      const response = await fetch('/api/admin/request', {
+      const response = await fetch('/api/customer', {
         method: 'POST',
         body: formDataToSend,
       });
@@ -313,7 +275,7 @@ export default function AdminAllRequestsPage() {
           client: '',
           assignedById: currentUser?.id || '',
           serviceQueueCategory: '',
-          companyId: '',
+          companyId: currentUser?.companyId || '',
         });
 
         setSelectedFiles([]);
@@ -346,30 +308,6 @@ export default function AdminAllRequestsPage() {
       minute: '2-digit',
     });
   };
-
-  const getAllAssignableUsers = () => {
-    const agentUsers = agents.map(agent => ({
-      id: agent.id, // Use agent ID, backend will handle the mapping
-      userId: agent.id, // Store agent ID for backend mapping
-      name: `${agent.firstName} ${agent.lastName}`,
-      type: 'Agent',
-      email: agent.email
-    }));
-
-    const superAdminUsers = users
-      .filter(user => user.role === 'super_admin')
-      .map(user => ({
-        id: user.id, // Use user ID directly
-        userId: user.id,
-        name: `${user.firstName} ${user.lastName}`,
-        type: 'Super Admin',
-        email: user.email
-      }));
-
-    return [...agentUsers, ...superAdminUsers];
-  };
-
-  const assignableUsers = getAllAssignableUsers();
 
   return (
     <DashboardLayout navigation={navigation} title="">
@@ -505,14 +443,14 @@ export default function AdminAllRequestsPage() {
                           <SelectValue placeholder="Select an assignee" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          {assignableUsers.length > 0 ? (
-                            assignableUsers.map((user) => (
+                          {agents.length > 0 ? (
+                            agents.map((agent) => (
                               <SelectItem 
-                                key={user.id} 
-                                value={user.id}
+                                key={agent.id} 
+                                value={agent.id}
                                 className="bg-white hover:bg-gray-50"
                               >
-                                {user.name} ({user.type})
+                                {agent.firstName} {agent.lastName} ({agent.type === 'agent' ? 'Agent' : 'Admin'})
                               </SelectItem>
                             ))
                           ) : (
@@ -522,9 +460,9 @@ export default function AdminAllRequestsPage() {
                           )}
                         </SelectContent>
                       </Select>
-                      {assignableUsers.length === 0 && (
+                      {agents.length === 0 && (
                         <p className="mt-1 text-xs text-red-500">
-                          No agents or admin users found. Please create agents first.
+                          No agents or admin users found. Please contact your administrator.
                         </p>
                       )}
                     </div>
@@ -538,21 +476,6 @@ export default function AdminAllRequestsPage() {
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="policy_inquiry" className="bg-white hover:bg-gray-50">
-                            Policy Inquiry
-                          </SelectItem>
-                          <SelectItem value="claims_processing" className="bg-white hover:bg-gray-50">
-                            Claims Processing
-                          </SelectItem>
-                          <SelectItem value="account_update" className="bg-white hover:bg-gray-50">
-                            Account Update
-                          </SelectItem>
-                          <SelectItem value="technical_support" className="bg-white hover:bg-gray-50">
-                            Technical Support
-                          </SelectItem>
-                          <SelectItem value="billing_inquiry" className="bg-white hover:bg-gray-50">
-                            Billing Inquiry
-                          </SelectItem>
                           <SelectItem value="other" className="bg-white hover:bg-gray-50">
                             Other
                           </SelectItem>

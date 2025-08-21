@@ -1,20 +1,39 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/auth/middleware';
 import { db } from '@/lib/db';
-import { serviceRequests } from '@/lib/db/schema';
-import { desc, eq } from 'drizzle-orm';
+import { serviceRequests, agents } from '@/lib/db/schema';
+import { desc, eq, inArray, or } from 'drizzle-orm';
 
-export const GET = requireRole(['customer', 'customer_admin'])(
+export const GET = requireRole(['agent'])(
   async (req) => {
     try {
-      const userCompanyId = req.headers.get('x-company-id');
+      const userId = req.headers.get('x-user-id');
       
-      if (!userCompanyId) {
-        return NextResponse.json({ error: 'Company ID required' }, { status: 400 });
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID required' }, { status: 400 });
+      }
+
+      const agent = await db.query.agents.findFirst({
+        where: eq(agents.userId, userId),
+      });
+
+      if (!agent) {
+        return NextResponse.json({ error: 'Agent not found' }, { status: 404 });
+      }
+
+      let whereConditions;
+      
+      if (agent.assignedCompanyIds && agent.assignedCompanyIds.length > 0) {
+        whereConditions = or(
+          inArray(serviceRequests.companyId, agent.assignedCompanyIds),
+          eq(serviceRequests.assignedToId, userId)
+        );
+      } else {
+        whereConditions = eq(serviceRequests.assignedToId, userId);
       }
 
       const requests = await db.query.serviceRequests.findMany({
-        where: eq(serviceRequests.companyId, userCompanyId),
+        where: whereConditions,
         with: {
           company: {
             columns: {
@@ -81,7 +100,7 @@ export const GET = requireRole(['customer', 'customer_admin'])(
         summary 
       });
     } catch (error) {
-      console.error('Failed to fetch customer summary data:', error);
+      console.error('Failed to fetch agent summary data:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }

@@ -1,4 +1,3 @@
-// src/app/admin/customers/requests/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -352,8 +351,8 @@ export default function AdminAllRequestsPage() {
 
   const getAllAssignableUsers = () => {
     const agentUsers = agents.map(agent => ({
-      id: agent.id, // Use agent ID, backend will handle the mapping
-      userId: agent.id, // Store agent ID for backend mapping
+      id: agent.id, 
+      userId: agent.id, 
       name: `${agent.firstName} ${agent.lastName}`,
       type: 'Agent',
       email: agent.email
@@ -362,7 +361,7 @@ export default function AdminAllRequestsPage() {
     const superAdminUsers = users
       .filter(user => user.role === 'super_admin')
       .map(user => ({
-        id: user.id, // Use user ID directly
+        id: user.id, 
         userId: user.id,
         name: `${user.firstName} ${user.lastName}`,
         type: 'Super Admin',
@@ -541,21 +540,6 @@ export default function AdminAllRequestsPage() {
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                         <SelectContent className="bg-white border border-gray-200">
-                          <SelectItem value="policy_inquiry" className="bg-white hover:bg-gray-50">
-                            Policy Inquiry
-                          </SelectItem>
-                          <SelectItem value="claims_processing" className="bg-white hover:bg-gray-50">
-                            Claims Processing
-                          </SelectItem>
-                          <SelectItem value="account_update" className="bg-white hover:bg-gray-50">
-                            Account Update
-                          </SelectItem>
-                          <SelectItem value="technical_support" className="bg-white hover:bg-gray-50">
-                            Technical Support
-                          </SelectItem>
-                          <SelectItem value="billing_inquiry" className="bg-white hover:bg-gray-50">
-                            Billing Inquiry
-                          </SelectItem>
                           <SelectItem value="other" className="bg-white hover:bg-gray-50">
                             Other
                           </SelectItem>

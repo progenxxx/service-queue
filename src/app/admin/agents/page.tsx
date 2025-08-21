@@ -1,4 +1,3 @@
-// src/app/admin/agents/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';

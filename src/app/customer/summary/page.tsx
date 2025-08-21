@@ -55,6 +55,7 @@ interface User {
   firstName: string;
   lastName: string;
   email: string;
+  role: string;
 }
 
 interface SummaryStats {
@@ -66,14 +67,16 @@ interface SummaryStats {
   overdueRequests: number;
 }
 
-const navigation = [
-  { name: 'Create Request', href: '/customer/customers', icon: Building2, current: false },
-  { name: 'Summary', href: '/customer/summary', icon: Building2, current: false },
+const getNavigation = (userRole: string) => [
+  { name: 'Create Request', href: '/customer', icon: Building2, current: false },
+  { name: 'Summary', href: '/customer/summary', icon: Building2, current: true },
   { name: 'Reports', href: '/customer/reports', icon: BarChart3, current: false },
-  { name: 'Admin Settings', href: 'customer/admin/settings', icon: Settings, current: false },
+  ...(userRole === 'customer_admin' ? [
+    { name: 'Admin Settings', href: '/customer/admin/settings', icon: Settings, current: false }
+  ] : [])
 ];
 
-export default function SummaryPage() {
+export default function CustomerSummaryPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<ServiceRequest[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -81,6 +84,8 @@ export default function SummaryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [navigation, setNavigation] = useState(getNavigation('customer'));
 
   const [filters, setFilters] = useState({
     client: '',
@@ -92,6 +97,7 @@ export default function SummaryPage() {
   });
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchSummaryData();
     fetchUsers();
   }, []);
@@ -141,9 +147,24 @@ export default function SummaryPage() {
     setFilteredRequests(filtered);
   }, [requests, filters]);
 
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/me');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.user) {
+          setCurrentUser(data.user);
+          setNavigation(getNavigation(data.user.role));
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch current user:', error);
+    }
+  };
+
   const fetchSummaryData = async () => {
     try {
-      const response = await fetch('/api/admin/summary');
+      const response = await fetch('/api/customer/summary');
       if (response.ok) {
         const data = await response.json();
         setRequests(data.requests || []);
@@ -158,10 +179,10 @@ export default function SummaryPage() {
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/admin/users');
+      const response = await fetch('/api/customer/agents');
       if (response.ok) {
         const data = await response.json();
-        setUsers(data.users || []);
+        setUsers(data.agents || []);
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
@@ -185,7 +206,7 @@ export default function SummaryPage() {
   };
 
   const handleAddServiceRequest = () => {
-    window.location.href = '/admin/customers/requests';
+    window.location.href = '/customer';
   };
 
   const getStatusColor = (status: string) => {
@@ -268,10 +289,10 @@ export default function SummaryPage() {
               onValueChange={(value) => setFilters({...filters, status: value === '__all__' ? '' : value || ''})}
             >
               <SelectTrigger className="border-0 shadow-none bg-gray-50">
-                <SelectValue placeholder="Select Date" />
+                <SelectValue placeholder="Select Status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__all__">All Dates</SelectItem>
+                <SelectItem value="__all__">All Status</SelectItem>
                 <SelectItem value="new">New</SelectItem>
                 <SelectItem value="open">Open</SelectItem>
                 <SelectItem value="in_progress">In Progress</SelectItem>
